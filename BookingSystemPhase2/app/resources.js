@@ -6,9 +6,6 @@ import { validateText, setFieldState } from "./form.js";
 const actions = document.getElementById("resourceActions");
 const resourceNameContainer = document.getElementById("resourceNameContainer");
 const resourceDescription = document.getElementById("resourceDescription");
-const form = document.getElementById("resourceForm");
-
-const role = "admin";
 
 let createButton = null;
 let updateButton = null;
@@ -17,20 +14,18 @@ let deleteButton = null;
 // ===============================
 // Button helpers
 // ===============================
-const BUTTON_BASE_CLASSES =
+const BUTTON_BASE =
   "w-full rounded-2xl px-6 py-3 text-sm font-semibold transition-all duration-200 ease-out";
-
-const BUTTON_ENABLED_CLASSES =
+const BUTTON_ACTIVE =
   "bg-brand-primary text-white hover:bg-brand-dark/80 shadow-soft";
 
-function addButton({ label, type = "button", value, classes = "" }) {
+function addButton(label, value) {
   const btn = document.createElement("button");
-  btn.type = type;
-  btn.textContent = label;
+  btn.type = "submit";
   btn.name = "action";
-  if (value) btn.value = value;
-
-  btn.className = `${BUTTON_BASE_CLASSES} ${classes}`.trim();
+  btn.value = value;
+  btn.textContent = label;
+  btn.className = `${BUTTON_BASE} ${BUTTON_ACTIVE}`;
   actions.appendChild(btn);
   return btn;
 }
@@ -38,34 +33,17 @@ function addButton({ label, type = "button", value, classes = "" }) {
 function setButtonEnabled(btn, enabled) {
   if (!btn) return;
   btn.disabled = !enabled;
-  btn.classList.toggle("cursor-not-allowed", !enabled);
   btn.classList.toggle("opacity-50", !enabled);
+  btn.classList.toggle("cursor-not-allowed", !enabled);
 }
 
 // ===============================
 // Render buttons
 // ===============================
-function renderActionButtons(currentRole) {
-  if (currentRole === "admin") {
-    createButton = addButton({
-      label: "Create",
-      type: "submit",
-      value: "create",
-      classes: BUTTON_ENABLED_CLASSES,
-    });
-
-    updateButton = addButton({
-      label: "Update",
-      value: "update",
-      classes: BUTTON_ENABLED_CLASSES,
-    });
-
-    deleteButton = addButton({
-      label: "Delete",
-      value: "delete",
-      classes: BUTTON_ENABLED_CLASSES,
-    });
-  }
+function renderButtons() {
+  createButton = addButton("Create", "create");
+  updateButton = addButton("Update", "update");
+  deleteButton = addButton("Delete", "delete");
 
   setButtonEnabled(createButton, false);
   setButtonEnabled(updateButton, false);
@@ -73,11 +51,10 @@ function renderActionButtons(currentRole) {
 }
 
 // ===============================
-// Create name input dynamically
+// Create resource name input
 // ===============================
 function createResourceNameInput(container) {
   const input = document.createElement("input");
-
   input.id = "resourceName";
   input.name = "resourceName";
   input.type = "text";
@@ -94,98 +71,27 @@ function createResourceNameInput(container) {
 }
 
 // ===============================
-// Combined validation for BOTH fields
+// Combined validation
 // ===============================
-function updateCreateButton() {
+function updateValidation() {
   const nameValid = validateText(resourceNameInput.value);
   const descValid = validateText(resourceDescription.value);
 
   setFieldState(resourceNameInput, nameValid);
   setFieldState(resourceDescription, descValid);
 
-  setButtonEnabled(createButton, nameValid && descValid);
-}
-
-// ===============================
-// Attach validation to each field
-// ===============================
-function attachValidation(input) {
-  input.addEventListener("input", updateCreateButton);
+  const allValid = nameValid && descValid;
+  setButtonEnabled(createButton, allValid);
 }
 
 // ===============================
 // Bootstrapping
 // ===============================
-renderActionButtons(role);
+renderButtons();
 
 const resourceNameInput = createResourceNameInput(resourceNameContainer);
 
-attachValidation(resourceNameInput);
-attachValidation(resourceDescription);
+resourceNameInput.addEventListener("input", updateValidation);
+resourceDescription.addEventListener("input", updateValidation);
 
-// Initialize state on load
-updateCreateButton();
-
-// ===============================
-// Form submit handling
-// ===============================
-async function handleSubmit(e) {
-  e.preventDefault();
-  const submitter = e.submitter || null;
-  const action = submitter && submitter.value ? submitter.value : "create";
-
-  const name = resourceNameInput.value.trim();
-  const desc = resourceDescription.value.trim();
-
-  const nameValid = validateText(name);
-  const descValid = validateText(desc);
-
-  setFieldState(resourceNameInput, nameValid);
-  setFieldState(resourceDescription, descValid);
-
-  if (!nameValid || !descValid) {
-    setButtonEnabled(createButton, false);
-    return;
-  }
-
-  const availableEl = document.getElementById("resourceAvailable");
-  const priceEl = document.getElementById("resourcePrice");
-  const priceUnit = form.querySelector('input[name="resourcePriceUnit"]:checked')?.value || "hour";
-
-  const payload = {
-    name,
-    description: desc,
-    available: Boolean(availableEl?.checked),
-    price: priceEl && priceEl.value !== "" ? parseFloat(priceEl.value) : 0,
-    priceUnit,
-    action,
-  };
-
-  try {
-    const method = action === "create" ? "POST" : action === "update" ? "PUT" : "DELETE";
-    const res = await fetch("/api/resources", {
-      method,
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
-    });
-
-    if (!res.ok) {
-      const text = await res.text().catch(() => "");
-      console.error("Save failed:", res.status, text);
-      alert("Failed to save resource (see console).");
-      return;
-    }
-
-    // Success
-    alert("Resource saved successfully.");
-    if (action === "create") {
-      form.reset();
-      updateCreateButton();
-    }
-  } catch (err) {
-    console.error(err);
-    alert("An error occurred while saving (see console).");
-  }
-}
-
-if (form) form.addEventListener("submit", handleSubmit);
+updateValidation();

@@ -1,26 +1,11 @@
 // ===============================
-// Form handling for resources page
+// Shared validation helpers
 // ===============================
 
-// -------------- Helpers --------------
-function $(id) {
-  return document.getElementById(id);
-}
-
-function logSection(title, data) {
-  console.group(title);
-  console.log(data);
-  console.groupEnd();
-}
-
-// ---------------- Validation helpers ----------------
-
-// Check if a text field contains meaningful content
 export function validateText(value) {
   return value.trim().length > 0;
 }
 
-// Apply green/red border based on validity
 export function setFieldState(element, isValid) {
   if (!element) return;
 
@@ -33,14 +18,13 @@ export function setFieldState(element, isValid) {
   }
 }
 
-// ---------------- Form wiring ----------------
+// ===============================
+// Form submission
+// ===============================
 
 document.addEventListener("DOMContentLoaded", () => {
-  const form = $("resourceForm");
-  if (!form) {
-    console.warn('resourceForm not found. Ensure the form has id="resourceForm".');
-    return;
-  }
+  const form = document.getElementById("resourceForm");
+  if (!form) return;
 
   form.addEventListener("submit", onSubmit);
 });
@@ -51,8 +35,8 @@ async function onSubmit(event) {
   const submitter = event.submitter;
   const actionValue = submitter?.value ?? "create";
 
-  const name = $("resourceName")?.value.trim() ?? "";
-  const description = $("resourceDescription")?.value.trim() ?? "";
+  const name = document.getElementById("resourceName")?.value.trim() ?? "";
+  const description = document.getElementById("resourceDescription")?.value.trim() ?? "";
 
   if (!validateText(name) || !validateText(description)) {
     console.warn("Invalid input — request not sent.");
@@ -63,12 +47,12 @@ async function onSubmit(event) {
     action: actionValue,
     resourceName: name,
     resourceDescription: description,
-    resourceAvailable: $("resourceAvailable")?.checked ?? false,
-    resourcePrice: $("resourcePrice")?.value ?? "",
-    resourcePriceUnit: $("resourcePriceUnit")?.value ?? ""
+    resourceAvailable: document.getElementById("resourceAvailable")?.checked ?? false,
+    resourcePrice: document.getElementById("resourcePrice")?.value ?? "",
+    resourcePriceUnit: document.querySelector("input[name='resourcePriceUnit']:checked")?.value ?? ""
   };
 
-  logSection("Sending payload to httpbin.org/post", payload);
+  console.log("Sending payload:", payload);
 
   try {
     const response = await fetch("https://httpbin.org/post", {
@@ -77,19 +61,8 @@ async function onSubmit(event) {
       body: JSON.stringify(payload)
     });
 
-    if (!response.ok) {
-      const text = await response.text().catch(() => "");
-      throw new Error(`HTTP ${response.status} ${response.statusText}\n${text}`);
-    }
-
     const data = await response.json();
-
-    console.group("Response from httpbin.org");
-    console.log("Status:", response.status);
-    console.log("URL:", data.url);
-    console.log("You sent (echo):", data.json);
-    console.log("Headers (echoed):", data.headers);
-    console.groupEnd();
+    console.log("Response:", data);
 
   } catch (err) {
     console.error("POST error:", err);
