@@ -1,81 +1,67 @@
-
-// ===============================
-// Form handling for resources page
-// ===============================
-
-// -------------- Helpers --------------
-function $(id) {
-  return document.getElementById(id);
+// Validation helpers
+export function validateText(value) {
+  return value.trim().length > 0;
 }
 
-// Timestamp
-function timestamp() {
-  const now = new Date();
-  return now.toISOString().replace('T', ' ').replace('Z', '');
+export function setFieldState(element, isValid) {
+  if (!element) return;
+
+  element.classList.remove("valid", "invalid");
+
+  if (isValid) {
+    element.classList.add("valid");
+  } else {
+    element.classList.add("invalid");
+  }
 }
 
-// -------------- Form wiring --------------
+// Form submission
 document.addEventListener("DOMContentLoaded", () => {
-  const form = $("resourceForm");
+  const form = document.getElementById("resourceForm");
+  if (!form) return;
+
   form.addEventListener("submit", onSubmit);
 });
 
 async function onSubmit(event) {
   event.preventDefault();
+
   const submitter = event.submitter;
-  const actionValue = submitter && submitter.value ? submitter.value : "create";
-  const selectedUnit = document.querySelector('input[name="resourcePriceUnit"]:checked')?.value ?? "";
-  const priceRaw = $("resourcePrice")?.value ?? "";
-  const resourcePrice = priceRaw === "" ? 0 : Number(priceRaw);
+  const actionValue = submitter?.value ?? "create";
+
+  const name = document.getElementById("resourceName")?.value.trim() ?? "";
+  const description = document.getElementById("resourceDescription")?.value.trim() ?? "";
+  const available = document.getElementById("resourceAvailable")?.checked ?? false;
+  const price = document.getElementById("resourcePrice")?.value ?? "";
+  const unit = document.querySelector("input[name='resourcePriceUnit']:checked")?.value ?? "";
+
+  if (!validateText(name) || !validateText(description)) {
+    console.warn("Invalid input — request not sent.");
+    return;
+  }
 
   const payload = {
     action: actionValue,
-    resourceName: $("resourceNamee")?.value ?? "",
-    resourceDescription: $("resourceDescription")?.value ?? "",
-    resourceAvailable: $("resourceAvailable")?.checked ?? false,
-    resourcePrice,
-    resourcePriceUnit: selectedUnit
+    resourceName: name,
+    resourceDescription: description,
+    resourceAvailable: available,
+    resourcePrice: price,
+    resourcePriceUnit: unit
   };
 
+  console.log("Sending payload:", payload);
+
   try {
-    console.log("--------------------------");
-    console.log("The request send to the server " + `[${timestamp()}]`);
-    console.log("--------------------------");
     const response = await fetch("/api/resources", {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json"
-      },
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload)
     });
 
-    if (!response.ok) {
-      const text = await response.text().catch(() => "");
-      throw new Error(`HTTP ${response.status} ${response.statusText}\n${text}`);
-    }
-
-    // Creates an alert and a log message
     const data = await response.json();
-    let msg = "Server response " + `[${timestamp()}]\n`;
-    msg += "--------------------------\n";
-    msg += "Status ➡️ " + response.status + "\n";
-    msg += "Action ➡️ " + data.echo.action + "\n";
-    msg += "Name ➡️ "+ data.echo.resourceName + "\n";
-    msg += "Description ➡️ " + data.echo.resourceDescription + "\n";
-    msg += "Availability ➡️ " + data.echo.resourceAvailable + "\n";
-    msg += "Price unit ➡️ " + data.echo.resourcePriceUnit + "\n";
+    console.log("Response:", data);
 
-    console.log("Server response " + `[${timestamp()}]`);
-    console.log("--------------------------");
-    console.log("Status ➡️ ", response.status);
-    console.log("Action ➡️ ", data.echo.action);
-    console.log("Name ➡️ ", data.echo.resourceName);
-    console.log("Description ➡️ ", data.echo.resourceDescription);
-    console.log("Availability ➡️ ", data.echo.resourceAvailable);
-    console.log("Price ➡️ ", data.echo.resourcePrice);
-
-    console.log("--------------------------");
-    alert(msg);
+    alert(`Status: ${data.status}\nAction: ${data.action}\nName: ${data.resourceName}\nDescription: ${data.resourceDescription}`);
 
   } catch (err) {
     console.error("POST error:", err);
