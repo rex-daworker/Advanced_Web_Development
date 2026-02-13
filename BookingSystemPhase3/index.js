@@ -2,64 +2,73 @@ require("dotenv").config();
 
 const express = require("express");
 const app = express();
+const PORT = process.env.PORT;
 const path = require("path");
 
-// PORT fallback so server always runs
-const PORT = process.env.PORT || 5000;
-
-// Timestamp helper
+// Timestamp
 function timestamp() {
   const now = new Date();
   return now.toISOString().replace("T", " ").replace("Z", "");
 }
 
-// Middleware
-app.use(express.json()); // MUST be before routes
+// --- Middleware ---
+app.use(express.json()); // Parse application/json
 
-// Serve static files
+// Serve everything in ./public as static assets
 const publicDir = path.join(__dirname, "public");
 app.use(express.static(publicDir));
 
-// Serve pages
+// --- Views (HTML pages) ---
+// GET /  -> serve index.html
 app.get("/", (req, res) => {
   res.sendFile(path.join(publicDir, "index.html"));
 });
 
+// Optional: GET /resources -> serve resources.html directly
 app.get("/resources", (req, res) => {
   res.sendFile(path.join(publicDir, "resources.html"));
 });
 
-// POST handler — FIXED
+// POST /api/resources -> create/update/delete based on "action"
 app.post("/api/resources", (req, res) => {
   const {
     action = "",
     resourceName = "",
     resourceDescription = "",
     resourceAvailable = false,
-    resourcePrice = "",
-    resourcePriceUnit = ""
-  } = req.body;
+    resourcePrice = 0,
+    resourcePriceUnit = "",
+  } = req.body || {};
 
-  console.log(`[${timestamp()}] Action = ${action}`);
-  console.log(`[${timestamp()}] Name = ${resourceName}`);
-  console.log(`[${timestamp()}] Description = ${resourceDescription}`);
-  console.log(`[${timestamp()}] Availability = ${resourceAvailable}`);
-  console.log(`[${timestamp()}] Price = ${resourcePrice}`);
-  console.log(`[${timestamp()}] Price unit = ${resourcePriceUnit}`);
+  // Normalize inputs
+  const resourceAction = String(action).trim();
+  const name = String(resourceName).trim();
+  const description = "";
+  const available = Boolean(resourceAvailable);
+  const price = Number.isFinite(Number(resourcePrice))
+    ? Number(resourcePrice)
+    : 0;
+  const unit = String(resourcePriceUnit || "").trim();
 
-  // Always respond — FIXED
-  res.status(200).json({
-    status: 200,
-    action,
-    resourceName,
-    resourceDescription,
-    resourceAvailable,
-    resourcePrice,
-    resourcePriceUnit
-  });
+  // The client's request to the console
+  console.log("The client's POST request ", `[${timestamp()}]`);
+  console.log("--------------------------");
+  console.log("Action ➡️ ", resourceAction);
+  console.log("Name ➡️ ", name);
+  console.log("Description ➡️ ", description);
+  console.log("Price ➡️ ", price);
+  console.log("Price unit ➡️ ", unit);
+  console.log("--------------------------");
+  return res.json({ ok: true, echo: req.body });
 });
 
-// Start server
+// --- Fallback 404 for unknown API routes ---
+app.use("/api", (req, res) => {
+  res.status(404).json({ error: "Not found" });
+  res.json({ ok: true });
+});
+
+// --- Start server ---
 app.listen(PORT, () => {
   console.log(`Server listening on http://localhost:${PORT}`);
 });
