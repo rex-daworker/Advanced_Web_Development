@@ -30,7 +30,7 @@ async function onSubmit(event) {
 
   const payload = {
     action: actionValue,
-    resourceName: $("resourceNamee")?.value ?? "",
+    resourceName: $("resourceName")?.value ?? "",
     resourceDescription: $("resourceDescription")?.value ?? "",
     resourceAvailable: $("resourceAvailable")?.checked ?? false,
     resourcePrice,

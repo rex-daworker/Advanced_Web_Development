@@ -7,12 +7,14 @@ const resourceDescriptionCnt = document.getElementById("resourceDescriptionCnt")
 // Example roles
 const role = "admin"; // "reserver" | "admin"
 
-// Will hold a reference to the Create button so we can enable/disable it
-let createButton = null;
+
 
 // Resource name and description validation status
 let resourceNameValid = false
 let resourceDescriptionValid = false
+let createButton = null;
+let updateButton = null;
+let deleteButton = null;
 
 // ===============================
 // 2) Button creation helpers
@@ -251,44 +253,4 @@ attachResourceNameValidation(resourceNameInput);
 const resourceDescriptionArea = createResourceDescriptionArea(resourceDescriptionCnt);
 attachResourceDescriptionValidation(resourceDescriptionArea);
 
-// ===============================
-// 5) SEND POST REQUEST ON SUBMIT
-// ===============================
-const form = document.getElementById("resourceForm");
 
-form.addEventListener("submit", async (e) => {
-  e.preventDefault();
-
-  const action = e.submitter.value;
-  const name = document.getElementById("resourceName").value;
-  const description = document.getElementById("resourceDescription").value;
-  const available = document.getElementById("resourceAvailable").checked;
-  const price = document.getElementById("resourcePrice").value;
-  const unit = document.querySelector("input[name='priceUnit']:checked").value;
-
-  const response = await fetch("/api/resources", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      action,
-      resourceName: name,
-      resourceDescription: description,
-      resourceAvailable: available,
-      resourcePrice: price,
-      resourcePriceUnit: unit,
-    }),
-  });
-
-  const data = await response.json();
-  alert(
-    `Server response [${new Date().toISOString()}]\n` +
-    "------------------------------\n" +
-    `Status = 200\n` +
-    `Action = ${action}\n` +
-    `Name = ${name}\n` +
-    `Description = ${description}\n` +
-    `Availability = ${available}\n` +
-    `Price = ${price}\n` +
-    `Price unit = ${unit}`
-  );
-});
