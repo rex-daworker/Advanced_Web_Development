@@ -61,11 +61,11 @@ const resourceValidators = [
     .toFloat(), // coercion
 
   body('resourcePriceUnit')
-    .exists({ checkFalsy: true }).withMessage('resourcePriceUnit is required')
-    .isString().withMessage('resourcePriceUnit must be a string')
-    .trim()
-    .isIn(['hour', 'day'])
-    .withMessage("resourcePriceUnit must be 'hour', 'day', 'week', or 'month'"),
+  .exists().withMessage('resourcePriceUnit is required')
+  .isString().withMessage('resourcePriceUnit must be a string')
+  .trim()
+  .isIn(['hour', 'day', 'week', 'month'])
+  .withMessage("resourcePriceUnit must be 'hour', 'day', 'week', or 'month'"),
 ];
 
 // POST /api/resources -> create (minimal)
