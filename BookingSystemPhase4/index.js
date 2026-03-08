@@ -50,9 +50,10 @@ const resourceValidators = [
     .isLength({ min: 10, max: 50 }).withMessage('resourceDescription must be 10-50 characters'),
 
   body('resourceAvailable')
-    .exists({ checkFalsy: true }).withMessage('resourceAvailable is required')
-    .isBoolean().withMessage('resourceAvailable must be boolean')
-    .toBoolean(), // coercion
+  .exists().withMessage('resourceAvailable is required')
+  .isBoolean().withMessage('resourceAvailable must be boolean')
+  .toBoolean(),
+
 
   body('resourcePrice')
     .exists({ checkFalsy: true }).withMessage('resourcePrice is required')
