@@ -1,145 +1,151 @@
-require("dotenv").config();
-const crypto = require('crypto');
-const express = require("express");
-const app = express();
-const PORT = process.env.IPORT;
-const path = require('path');
-const { Pool } = require('pg');
-const { body, validationResult } = require('express-validator');
+// index.js - Complete working backend for Booking System Phase 4
 
-// Timestamp
-function timestamp() {
-  const now = new Date();
-  return now.toISOString().replace('T', ' ').replace('Z', '');
+require("dotenv").config();
+const express = require("express");
+const { Pool } = require("pg");
+const path = require("path");
+
+const app = express();
+
+// ────────────────────────────────────────────────
+// Middleware
+// ────────────────────────────────────────────────
+app.use(express.json());                    // Parse JSON bodies
+app.use(express.static(path.join(__dirname, "public"))); // Serve frontend files
+
+// ────────────────────────────────────────────────
+// Database connection
+// ────────────────────────────────────────────────
+const pool = new Pool({
+  host: process.env.PGHOST || "database",
+  port: Number(process.env.PGPORT) || 5432,
+  user: process.env.PGUSER || "booking_dbuser",
+  password: process.env.PGPASSWORD,
+  database: process.env.PGDATABASE || "booking_db",
+});
+
+// Log connection status
+pool.on("connect", () => {
+  console.log("Connected to PostgreSQL database");
+});
+
+pool.on("error", (err) => {
+  console.error("Database pool error:", err.stack);
+});
+
+// ────────────────────────────────────────────────
+// Validation helper
+// ────────────────────────────────────────────────
+function validateResource(body) {
+  const errors = [];
+
+  if (body.action !== "create") {
+    errors.push({ field: "action", msg: "action must be 'create'" });
+  }
+
+  if (!body.resourceName || typeof body.resourceName !== "string" || body.resourceName.trim().length < 3 || body.resourceName.trim().length > 50) {
+    errors.push({ field: "resourceName", msg: "resourceName must be 3–50 characters" });
+  }
+
+  if (!body.resourceDescription || typeof body.resourceDescription !== "string" || body.resourceDescription.trim().length < 5 || body.resourceDescription.trim().length > 200) {
+    errors.push({ field: "resourceDescription", msg: "resourceDescription must be 5–200 characters" });
+  }
+
+  if (body.resourceDescription && (body.resourceDescription.includes("<script") || body.resourceDescription.includes("</script>"))) {
+    errors.push({ field: "resourceDescription", msg: "Invalid characters in description" });
+  }
+
+  const avail = body.resourceAvailable;
+  if (avail !== true && avail !== false && avail !== "true" && avail !== "false") {
+    errors.push({ field: "resourceAvailable", msg: "resourceAvailable must be boolean (true/false)" });
+  }
+
+  const price = Number(body.resourcePrice);
+  if (isNaN(price) || price <= 0) {
+    errors.push({ field: "resourcePrice", msg: "resourcePrice must be a positive number" });
+  }
+
+  const allowedUnits = ["hour", "day", "week", "month"];
+  if (!body.resourcePriceUnit || !allowedUnits.includes(String(body.resourcePriceUnit).toLowerCase())) {
+    errors.push({ field: "resourcePriceUnit", msg: `resourcePriceUnit must be one of: ${allowedUnits.join(", ")}` });
+  }
+
+  return errors;
 }
 
-// --- Middleware ---
-app.use(express.json()); // Parse application/json
+// ────────────────────────────────────────────────
+// API Routes
+// ────────────────────────────────────────────────
 
-// Serve everything in ./public as static assets
-const publicDir = path.join(__dirname, "public");
-app.use(express.static(publicDir));
-
-// --- Views (HTML pages) ---
-// GET / -> serve index.html
-app.get("/", (req, res) => {
-  res.sendFile(path.join(publicDir, "index.html"));
+// GET all resources (for frontend list)
+app.get("/api/resources", async (req, res) => {
+  try {
+    const result = await pool.query("SELECT * FROM resources ORDER BY id DESC");
+    res.json({ ok: true, data: result.rows });
+  } catch (err) {
+    console.error("GET /api/resources error:", err);
+    res.status(500).json({ ok: false, error: "Database error" });
+  }
 });
 
-// Optional: GET /resources -> serve resources.html directly
-app.get('/resources', (req, res) => {
-  res.sendFile(path.join(publicDir, 'resources.html'));
-});
+// CREATE resource
+app.post("/api/resources", async (req, res) => {
+  console.log("POST /api/resources received:", req.body);
 
-// --- Postgres pool (reads PG* from .env) ---
-const pool = new Pool({});
-
-// --- express-validator rules for the payload ---
-const resourceValidators = [
-  body('action')
-    .exists({ checkFalsy: true }).withMessage('action is required')
-    .trim()
-    .isIn(['create'])
-    .withMessage("action must be 'create'"),
-
-  body('resourceName')
-    .exists({ checkFalsy: true }).withMessage('resourceName is required')
-    .isString().withMessage('resourceName must be a string')
-    .trim()
-    .escape(),
-
-  body('resourceDescription')
-    .exists({ checkFalsy: true }).withMessage('resourceDescription is required')
-    .isString().withMessage('resourceDescription must be a string')
-    .trim()
-    .isLength({ min:10, max: 50 }).withMessage('resourceDescription must be 10-50 characters'),
-
-  body('resourceAvailable')
-    .exists({ checkFalsy: true }).withMessage('resourceAvailable is required')
-    .isBoolean().withMessage('resourceAvailable must be boolean')
-    .toBoolean(), // coercion
-
-  body('resourcePrice')
-    .exists({ checkFalsy: true }).withMessage('resourcePrice is required')
-    .isFloat({ min: 0 }).withMessage('resourcePrice must be a non-negative number')
-    .toFloat(), // coercion
-
-  body('resourcePriceUnit')
-    .exists({ checkFalsy: true }).withMessage('resourcePriceUnit is required')
-    .isString().withMessage('resourcePriceUnit must be a string')
-    .trim()
-    .isIn(['hour', 'day'])
-    .withMessage("resourcePriceUnit must be 'hour', 'day', 'week', or 'month'"),
-];
-
-// POST /api/resources -> create (minimal)
-app.post('/api/resources', resourceValidators, async (req, res) => {
-  // Validate input
-  const errors = validationResult(req);
-  if (!errors.isEmpty()) {
-    return res.status(400).json({
-      ok: false,
-      errors: errors.array().map(e => ({ field: e.path, msg: e.msg })),
-    });
+  const errors = validateResource(req.body);
+  if (errors.length > 0) {
+    return res.status(400).json({ ok: false, errors });
   }
-
-  // Pull normalized values (coerced by express-validator .toBoolean/.toFloat)
-  let {
-    action = '',
-    resourceName = '',
-    resourceDescription = '',
-    resourceAvailable = false,
-    resourcePrice = 0,
-    resourcePriceUnit = ''
-  } = req.body;
-
-  // Log (optional)
-  console.log("The client's POST request ", `[${timestamp()}]`);
-  console.log('------------------------------');
-  console.log('Action ➡️ ', action);
-  console.log('Name ➡️ ', resourceName);
-  console.log('Description ➡️ ', resourceDescription);
-  console.log('Availability ➡️ ', resourceAvailable);
-  console.log('Price ➡️ ', resourcePrice);
-  console.log('Price unit ➡️ ', resourcePriceUnit);
-  console.log('------------------------------');
-
-  if (action !== 'create') {
-    return res.status(400).json({ ok: false, error: 'Only create is implemented right now' });
-  }
-
-  resourceAvailable = false;
 
   try {
-    const insertSql = `
-      INSERT INTO resources (name, description, available, price, price_unit)
-      VALUES ($1, $2, $3, $4, $5)
-      RETURNING id, name, description, available, price, price_unit, created_at
-    `;
-    const params = [
-      crypto.createHash('sha256').update(resourceName, 'utf8').digest('hex'),
+    const {
+      resourceName,
       resourceDescription,
-      Boolean(resourceAvailable),
-      Number(resourcePrice)*2,
+      resourceAvailable,
+      resourcePrice,
       resourcePriceUnit
-    ];
+    } = req.body;
 
-    const { rows } = await pool.query(insertSql, params);
-    const created = rows[0];
+    // Convert to proper boolean
+    const available = resourceAvailable === true ||
+                      resourceAvailable === "true" ||
+                      resourceAvailable === 1 ||
+                      resourceAvailable === "1";
 
-    return res.status(201).json({ ok: true, data: created });
+    const result = await pool.query(`
+      INSERT INTO resources (name, description, available, price, price_unit, created_at)
+      VALUES ($1, $2, $3, $4, $5, NOW())
+      RETURNING *
+    `, [
+      resourceName.trim(),
+      resourceDescription.trim(),
+      available,
+      Number(resourcePrice),
+      resourcePriceUnit
+    ]);
+
+    console.log("Created resource:", result.rows[0]);
+
+    res.status(201).json({ ok: true, data: result.rows[0] });
   } catch (err) {
-    console.error('DB insert failed:', err);
-    return res.status(500).json({ ok: false, error: 'Database error' });
+    console.error("POST /api/resources DB error:", err.stack);
+    res.status(500).json({ ok: false, error: "Database insert failed", details: err.message });
   }
 });
 
-// --- Fallback 404 for unknown API routes ---
-app.use('/api', (req, res) => {
-  res.status(404).json({ error: 'Not found' });
+// ────────────────────────────────────────────────
+// Fallback: Serve frontend for all non-API routes
+// ────────────────────────────────────────────────
+app.get("*", (req, res) => {
+  res.sendFile(path.join(__dirname, "public", "index.html"));
+  // If your main page is resources.html instead, change to:
+  // res.sendFile(path.join(__dirname, "public", "resources.html"));
 });
 
-// --- Start server ---
+// ────────────────────────────────────────────────
+// Start server
+// ────────────────────────────────────────────────
+const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
-  console.log(`Server listening on http://localhost:${PORT}`);
+  console.log(`Server running on http://localhost:${PORT}`);
 });
