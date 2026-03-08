@@ -52,7 +52,7 @@ function validateResource(body) {
   }
 
   if (body.resourceDescription && (body.resourceDescription.includes("<script") || body.resourceDescription.includes("</script>"))) {
-    errors.push({ field: "resourceDescription", msg: "Invalid characters in description" });
+    errors.push({ field: "resourceDescription", msg: "Invalid characters in description (HTML/scripts not allowed)" });
   }
 
   const avail = body.resourceAvailable;
@@ -77,18 +77,18 @@ function validateResource(body) {
 // API Routes
 // ────────────────────────────────────────────────
 
-// GET all resources (for frontend list)
+// GET all resources (for "View Resources" or list)
 app.get("/api/resources", async (req, res) => {
   try {
     const result = await pool.query("SELECT * FROM resources ORDER BY id DESC");
     res.json({ ok: true, data: result.rows });
   } catch (err) {
-    console.error("GET /api/resources error:", err);
+    console.error("GET /api/resources error:", err.stack);
     res.status(500).json({ ok: false, error: "Database error" });
   }
 });
 
-// CREATE resource
+// CREATE resource (for form submission)
 app.post("/api/resources", async (req, res) => {
   console.log("POST /api/resources received:", req.body);
 
@@ -99,6 +99,7 @@ app.post("/api/resources", async (req, res) => {
 
   try {
     const {
+      action,
       resourceName,
       resourceDescription,
       resourceAvailable,
@@ -138,14 +139,14 @@ app.post("/api/resources", async (req, res) => {
 // ────────────────────────────────────────────────
 app.get("*", (req, res) => {
   res.sendFile(path.join(__dirname, "public", "index.html"));
-  // If your main page is resources.html instead, change to:
+  // If main page is resources.html, change to:
   // res.sendFile(path.join(__dirname, "public", "resources.html"));
 });
 
 // ────────────────────────────────────────────────
 // Start server
 // ────────────────────────────────────────────────
-const PORT = process.env.PORT || 5000;
+const PORT = process.env.IPORT || 5000;
 app.listen(PORT, () => {
-  console.log(`Server running on http://localhost:${PORT}`);
+  console.log(`Server running on http://0.0.0.0:${PORT}`);
 });
