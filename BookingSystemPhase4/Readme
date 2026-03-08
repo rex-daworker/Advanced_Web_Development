@@ -1,0 +1,221 @@
+
+# 📘 Booking System – Phase 4  
+### Secure Resource Booking (Backend + Frontend + Database)
+
+This project implements the **Resource Management** portion of a secure booking system. It includes:
+
+- A **Node.js + Express** backend  
+- A **PostgreSQL** database running in Docker  
+- A **static frontend** served from `/public`  
+- Fully working **Create Resource** functionality  
+- A clean UI for viewing and managing resources  
+
+This is part of the Advanced Web Development course.
+
+![Resource Page Screenshot] 
+
+---
+
+## 🚀 Features Implemented
+
+### ✅ Create Resource (Fully Functional)
+Users can create a new resource with:
+
+- Resource name  
+- Resource description  
+- Availability toggle  
+- Price  
+- Price unit (hour/day/week/month)
+
+The form sends a POST request to:
+
+```
+POST /api/resources
+```
+
+The backend validates the input, inserts the resource into PostgreSQL, and returns:
+
+```json
+{
+  "ok": true,
+  "data": {
+    "id": 1,
+    "name": "Room for meeting",
+    "description": "Room for greatness",
+    "available": true,
+    "price": 6.11,
+    "price_unit": "hour",
+    "created_at": "2026-03-08T23:12:43.848Z"
+  }
+}
+```
+
+### ✅ Resource Listing (GET)
+The page includes a table that displays existing resources using:
+
+```
+GET /api/resources
+```
+
+### ✅ Dockerized Database
+A PostgreSQL database runs inside Docker and stores all resources persistently.
+
+### ✅ Static Frontend
+All HTML, CSS, and JS files are served from:
+
+```
+public/
+```
+
+The resource management page is accessed via:
+
+```
+http://localhost:5000/resources.html
+```
+
+---
+
+## 📂 Project Structure
+
+```
+BookingSystemPhase4/
+│
+├── public/
+│   ├── index.html
+│   ├── resources.html
+│   ├── form.js
+│   ├── resources.js
+│   └── styles.css (optional)
+│
+├── server.js
+├── package.json
+├── docker-compose.yml
+└── README.md
+```
+
+---
+
+## 🐳 Running the Project (Docker)
+
+Start backend + database:
+
+```bash
+docker compose up -d --build
+```
+
+Stop everything:
+
+```bash
+docker compose down
+```
+
+---
+
+## 🗄 Database Schema
+
+The `resources` table is created as:
+
+```sql
+CREATE TABLE resources (
+  id SERIAL PRIMARY KEY,
+  name TEXT NOT NULL,
+  description TEXT NOT NULL,
+  available BOOLEAN NOT NULL,
+  price NUMERIC NOT NULL,
+  price_unit TEXT NOT NULL,
+  created_at TIMESTAMP DEFAULT NOW()
+);
+```
+
+---
+
+## 🌐 API Endpoints
+
+### POST /api/resources
+Creates a new resource.
+
+### GET /api/resources
+Returns all resources.
+
+---
+
+## 🖥 Frontend Pages
+
+### Landing Page
+```
+/index.html
+```
+
+### Resource Management Page
+```
+/resources.html
+```
+
+⚠️ Important:  
+The correct path is **/resources.html**, not `/resources`.
+
+---
+
+## 🔧 Fixes Applied During Development
+
+- Corrected frontend payload field names  
+- Fixed `resourcePriceUnit is not defined`  
+- Added missing database table  
+- Corrected `/resources` → `/resources.html` navigation  
+- Repaired layout issues while preserving original design  
+- Ensured Docker database persists data  
+- Verified backend inserts and returns correct JSON  
+- Fixed View Resources button  
+- Ensured static files load correctly  
+
+---
+
+## 📸 Example Successful POST
+
+```bash
+curl -X POST http://localhost:5000/api/resources \
+-H "Content-Type: application/json" \
+-d '{
+  "resourceName": "Room for meeting",
+  "resourceDescription": "Room for greatness",
+  "resourceAvailable": true,
+  "resourcePrice": 6.11,
+  "resourcePriceUnit": "hour"
+}'
+```
+
+Response:
+
+```json
+{
+  "ok": true,
+  "data": {
+    "id": 6,
+    "name": "Room for meeting",
+    "description": "Room for greatness",
+    "available": true,
+    "price": 6.11,
+    "price_unit": "hour",
+    "created_at": "2026-03-08T23:12:43.848Z"
+  }
+}
+```
+
+---
+
+## ✔ Status
+
+This Phase 4 implementation is **fully functional**, including:
+
+- Working backend  
+- Working database  
+- Working resource creation  
+- Working resource listing  
+- Correct navigation  
+- Correct UI layout  
+
+---
+
+## 📄 License
+
+This project is part of coursework and follows the licensing terms of the course materials.
