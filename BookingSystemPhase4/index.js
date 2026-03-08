@@ -36,12 +36,7 @@ const pool = new Pool({});
 
 // --- express-validator rules for the payload ---
 const resourceValidators = [
-  body('action')
-  .optional()
-  .trim()
-  .isIn(['create']).withMessage("action must be 'create' if provided"),
-
-
+  
   body('resourceName')
     .exists({ checkFalsy: true }).withMessage('resourceName is required')
     .isString().withMessage('resourceName must be a string')
@@ -127,6 +122,7 @@ const params = [
 
 const { rows } = await pool.query(insertSql, params);
 return res.status(201).json({ ok: true, data: rows[0] });
+
 
 
   } catch (err) {
