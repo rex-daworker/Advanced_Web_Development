@@ -37,10 +37,10 @@ const pool = new Pool({});
 // --- express-validator rules for the payload ---
 const resourceValidators = [
   body('action')
-    .exists({ checkFalsy: true }).withMessage('action is required')
-    .trim()
-    .isIn(['create'])
-    .withMessage("action must be 'create'"),
+  .optional()
+  .trim()
+  .isIn(['create']).withMessage("action must be 'create' if provided"),
+
 
   body('resourceName')
     .exists({ checkFalsy: true }).withMessage('resourceName is required')
@@ -52,7 +52,7 @@ const resourceValidators = [
     .exists({ checkFalsy: true }).withMessage('resourceDescription is required')
     .isString().withMessage('resourceDescription must be a string')
     .trim()
-    .isLength({ min:10, max: 50 }).withMessage('resourceDescription must be 10-50 characters'),
+    .isLength({ min: 10, max: 50 }).withMessage('resourceDescription must be 10-50 characters'),
 
   body('resourceAvailable')
     .exists({ checkFalsy: true }).withMessage('resourceAvailable is required')
@@ -112,22 +112,23 @@ app.post('/api/resources', resourceValidators, async (req, res) => {
 
   try {
     const insertSql = `
-      INSERT INTO resources (name, description, available, price, price_unit)
-      VALUES ($1, $2, $3, $4, $5)
-      RETURNING id, name, description, available, price, price_unit, created_at
-    `;
-    const params = [
-      crypto.createHash('sha256').update(resourceName, 'utf8').digest('hex'),
-      resourceDescription,
-      Boolean(resourceAvailable),
-      Number(resourcePrice)*2,
-      resourcePriceUnit
-    ];
+  INSERT INTO resources (name, description, available, price, price_unit)
+  VALUES ($1, $2, $3, $4, $5)
+  RETURNING id, name, description, available, price, price_unit, created_at
+`;
 
-    const { rows } = await pool.query(insertSql, params);
-    const created = rows[0];
+const params = [
+  resourceName.trim(),
+  resourceDescription.trim(),
+  Boolean(resourceAvailable),
+  Number(resourcePrice),
+  resourcePriceUnit
+];
 
-    return res.status(201).json({ ok: true, data: created });
+const { rows } = await pool.query(insertSql, params);
+return res.status(201).json({ ok: true, data: rows[0] });
+
+
   } catch (err) {
     console.error('DB insert failed:', err);
     return res.status(500).json({ ok: false, error: 'Database error' });
