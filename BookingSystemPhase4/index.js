@@ -36,7 +36,7 @@ const pool = new Pool({});
 
 // --- express-validator rules for the payload ---
 const resourceValidators = [
-  
+
   body('resourceName')
     .exists({ checkFalsy: true }).withMessage('resourceName is required')
     .isString().withMessage('resourceName must be a string')
@@ -50,9 +50,9 @@ const resourceValidators = [
     .isLength({ min: 10, max: 50 }).withMessage('resourceDescription must be 10-50 characters'),
 
   body('resourceAvailable')
-  .exists().withMessage('resourceAvailable is required')
-  .isBoolean().withMessage('resourceAvailable must be boolean')
-  .toBoolean(),
+    .exists().withMessage('resourceAvailable is required')
+    .isBoolean().withMessage('resourceAvailable must be boolean')
+    .toBoolean(),
 
 
   body('resourcePrice')
@@ -61,11 +61,11 @@ const resourceValidators = [
     .toFloat(), // coercion
 
   body('resourcePriceUnit')
-  .exists().withMessage('resourcePriceUnit is required')
-  .isString().withMessage('resourcePriceUnit must be a string')
-  .trim()
-  .isIn(['hour', 'day', 'week', 'month'])
-  .withMessage("resourcePriceUnit must be 'hour', 'day', 'week', or 'month'"),
+    .exists().withMessage('resourcePriceUnit is required')
+    .isString().withMessage('resourcePriceUnit must be a string')
+    .trim()
+    .isIn(['hour', 'day', 'week', 'month'])
+    .withMessage("resourcePriceUnit must be 'hour', 'day', 'week', or 'month'"),
 ];
 
 // POST /api/resources -> create (minimal)
@@ -100,11 +100,6 @@ app.post('/api/resources', resourceValidators, async (req, res) => {
   console.log('Price unit ➡️ ', resourcePriceUnit);
   console.log('------------------------------');
 
-  if (action !== 'create') {
-    return res.status(400).json({ ok: false, error: 'Only create is implemented right now' });
-  }
-
-  resourceAvailable = false;
 
   try {
     const insertSql = `
@@ -113,16 +108,6 @@ app.post('/api/resources', resourceValidators, async (req, res) => {
   RETURNING id, name, description, available, price, price_unit, created_at
 `;
 
-const params = [
-  resourceName.trim(),
-  resourceDescription.trim(),
-  Boolean(resourceAvailable),
-  Number(resourcePrice),
-  resourcePriceUnit
-];
-
-const { rows } = await pool.query(insertSql, params);
-return res.status(201).json({ ok: true, data: rows[0] });
 
 
 
