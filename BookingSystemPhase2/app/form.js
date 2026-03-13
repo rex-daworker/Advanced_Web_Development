@@ -46,7 +46,7 @@ document.addEventListener("DOMContentLoaded", () => {
 });
 
 async function onSubmit(event) {
-  event.preventDefault();
+  event.preventDefault(); 
 
   const submitter = event.submitter;
   const actionValue = submitter?.value ?? "create";
