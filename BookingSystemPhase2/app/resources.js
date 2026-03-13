@@ -11,26 +11,29 @@ const form = document.getElementById("resourceForm");
 const role = "admin";
 
 let createButton = null;
-let updateButton = null;
-let deleteButton = null;
+// let updateButton = null;   // commented out – not used yet
+// let deleteButton = null;
+
+
+// ===============================
+// Button styling
+const BUTTON_BASE_CLASSES = "w-full rounded-2xl px-6 py-3 text-sm font-semibold transition-all duration-200 ease-out";
+const BUTTON_ENABLED_CLASSES = "bg-brand-primary text-white hover:bg-brand-dark/80 shadow-soft";
+const BUTTON_DISABLED_CLASSES = "bg-gray-300 text-gray-600 cursor-not-allowed opacity-60";
 
 // ===============================
 // Button helpers
-// ===============================
-const BUTTON_BASE_CLASSES =
-  "w-full rounded-2xl px-6 py-3 text-sm font-semibold transition-all duration-200 ease-out";
 
-const BUTTON_ENABLED_CLASSES =
-  "bg-brand-primary text-white hover:bg-brand-dark/80 shadow-soft";
-
-function addButton({ label, type = "button", value, classes = "" }) {
+function addButton({ label, type = "button", value, enabled = false }) {
   const btn = document.createElement("button");
   btn.type = type;
   btn.textContent = label;
   btn.name = "action";
   if (value) btn.value = value;
 
-  btn.className = `${BUTTON_BASE_CLASSES} ${classes}`.trim();
+  btn.className = `${BUTTON_BASE_CLASSES} ${enabled ? BUTTON_ENABLED_CLASSES : BUTTON_DISABLED_CLASSES}`;
+  btn.disabled = !enabled;
+
   actions.appendChild(btn);
   return btn;
 }
@@ -38,8 +41,7 @@ function addButton({ label, type = "button", value, classes = "" }) {
 function setButtonEnabled(btn, enabled) {
   if (!btn) return;
   btn.disabled = !enabled;
-  btn.classList.toggle("cursor-not-allowed", !enabled);
-  btn.classList.toggle("opacity-50", !enabled);
+  btn.className = `${BUTTON_BASE_CLASSES} ${enabled ? BUTTON_ENABLED_CLASSES : BUTTON_DISABLED_CLASSES}`;
 }
 
 // ===============================
@@ -51,25 +53,45 @@ function renderActionButtons(currentRole) {
       label: "Create",
       type: "submit",
       value: "create",
-      classes: BUTTON_ENABLED_CLASSES,
+      enabled: false, // starts disabled
     });
 
-    updateButton = addButton({
-      label: "Update",
-      value: "update",
-      classes: BUTTON_ENABLED_CLASSES,
-    });
-
-    deleteButton = addButton({
-      label: "Delete",
-      value: "delete",
-      classes: BUTTON_ENABLED_CLASSES,
-    });
+    // You can add update & delete later when selection logic exists
   }
+}
 
-  setButtonEnabled(createButton, false);
-  setButtonEnabled(updateButton, false);
-  setButtonEnabled(deleteButton, false);
+// Create name input dynamically
+function createResourceNameInput(container) {
+  const input = document.createElement("input");
+  input.id = "resourceName";
+  input.name = "resourceName";
+  input.type = "text";
+  input.placeholder = "e.g., Meeting Room A";
+  input.required = true;
+
+  input.className = `
+    mt-2 w-full rounded-2xl border border-black/10 bg-white
+    px-4 py-3 text-sm outline-none
+    focus:ring-2 focus:ring-brand-blue/30 transition-all duration-200 ease-out
+  `;
+
+  container.appendChild(input);
+  return input;
+}
+
+// Validation & button state
+let resourceNameInput; // will be set later
+
+function updateCreateButton() {
+  if (!resourceNameInput || !resourceDescription) return;
+
+  const nameValid = validateText(resourceNameInput.value);
+  const descValid = validateText(resourceDescription.value);
+
+  setFieldState(resourceNameInput, nameValid);
+  setFieldState(resourceDescription, descValid);
+
+  setButtonEnabled(createButton, nameValid && descValid);
 }
 
 // ===============================
@@ -109,83 +131,85 @@ function updateCreateButton() {
 // ===============================
 // Attach validation to each field
 // ===============================
+// Attach listeners
 function attachValidation(input) {
+  if (!input) return;
   input.addEventListener("input", updateCreateButton);
+  input.addEventListener("blur", updateCreateButton); // also on focus out
 }
 
-// ===============================
-// Bootstrapping
-// ===============================
+// Initialization
 renderActionButtons(role);
 
-const resourceNameInput = createResourceNameInput(resourceNameContainer);
+resourceNameInput = createResourceNameInput(resourceNameContainer);
 
 attachValidation(resourceNameInput);
 attachValidation(resourceDescription);
 
-// Initialize state on load
+// Initial check
 updateCreateButton();
 
-// ===============================
-// Form submit handling
-// ===============================
-async function handleSubmit(e) {
-  e.preventDefault();
-  const submitter = e.submitter || null;
-  const action = submitter && submitter.value ? submitter.value : "create";
+// Form submit
+if (form) {
+  form.addEventListener("submit", async (e) => {
+    e.preventDefault();
 
-  const name = resourceNameInput.value.trim();
-  const desc = resourceDescription.value.trim();
+    const submitter = e.submitter;
+    const action = submitter?.value ?? "create";
 
-  const nameValid = validateText(name);
-  const descValid = validateText(desc);
-
-  setFieldState(resourceNameInput, nameValid);
-  setFieldState(resourceDescription, descValid);
-
-  if (!nameValid || !descValid) {
-    setButtonEnabled(createButton, false);
-    return;
-  }
-
-  const availableEl = document.getElementById("resourceAvailable");
-  const priceEl = document.getElementById("resourcePrice");
-  const priceUnit = form.querySelector('input[name="resourcePriceUnit"]:checked')?.value || "hour";
-
-  const payload = {
-    name,
-    description: desc,
-    available: Boolean(availableEl?.checked),
-    price: priceEl && priceEl.value !== "" ? parseFloat(priceEl.value) : 0,
-    priceUnit,
-    action,
-  };
-
-  try {
-    const method = action === "create" ? "POST" : action === "update" ? "PUT" : "DELETE";
-    const res = await fetch("/api/resources", {
-      method,
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
-    });
-
-    if (!res.ok) {
-      const text = await res.text().catch(() => "");
-      console.error("Save failed:", res.status, text);
-      alert("Failed to save resource (see console).");
+    if (action !== "create") {
+      alert("Only Create is implemented in this phase.");
       return;
     }
 
-    // Success
-    alert("Resource saved successfully.");
-    if (action === "create") {
-      form.reset();
-      updateCreateButton();
-    }
-  } catch (err) {
-    console.error(err);
-    alert("An error occurred while saving (see console).");
-  }
-}
+    const name = resourceNameInput.value.trim();
+    const description = resourceDescription.value.trim();
 
-if (form) form.addEventListener("submit", handleSubmit);
+    const nameValid = validateText(name);
+    const descValid = validateText(description);
+
+    // Final check before send
+    if (!nameValid || !descValid) {
+      updateCreateButton(); // refresh visuals
+      alert("Please fill in both name and description correctly.");
+      return;
+    }
+
+    // Optional extra fields (safe defaults if missing)
+    const available = document.getElementById("resourceAvailable")?.checked ?? false;
+    const priceStr = document.getElementById("resourcePrice")?.value ?? "0";
+    const price = priceStr !== "" ? Number(priceStr) : 0;
+    const priceUnit = form.querySelector('input[name="resourcePriceUnit"]:checked')?.value ?? "hour";
+
+    const payload = {
+      name,
+      description,
+      available,
+      price,
+      priceUnit,
+      action,
+    };
+
+    try {
+      const res = await fetch("/api/resources", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+
+      if (!res.ok) {
+        let msg = await res.text().catch(() => "Server error");
+        alert(`Error: ${res.status} – ${msg}`);
+        return;
+      }
+
+      alert("Resource created successfully!");
+      form.reset();
+      updateCreateButton(); // disable button again
+
+    } catch (err) {
+      console.error(err);
+      alert("Network error – could not save resource.");
+    }
+  });
+}
