@@ -1,11 +1,27 @@
 // ===============================
-// Shared validation helpers
+// Form handling for resources page
 // ===============================
 
-export function validateText(value) {
-  return value.trim().length > 0;
+// -------------- Helpers --------------
+function $(id) {
+  return document.getElementById(id);
 }
 
+function logSection(title, data) {
+  console.group(title);
+  console.log(data);
+  console.groupEnd();
+}
+
+// ---------------- Validation helpers ----------------
+
+// Check if a text field contains meaningful content
+export function validateText(value) {
+  const trimmed = value.trim();
+  return trimmed.length >= 2 && trimmed.length <= 120;   // ← improved (was >0)
+}
+
+// Apply green/red border based on validity
 export function setFieldState(element, isValid) {
   if (!element) return;
 
@@ -18,127 +34,65 @@ export function setFieldState(element, isValid) {
   }
 }
 
-// ===============================
-// Form submission + live validation
-// ===============================
+// ---------------- Form wiring ----------------
 
 document.addEventListener("DOMContentLoaded", () => {
-  const form = document.getElementById("resourceForm");
-  if (!form) return;
-
-  // Get fields
-  const nameInput = document.getElementById("resourceName");
-  const descInput = document.getElementById("resourceDescription");
-  const availToggle = document.getElementById("resourceAvailable");
-  const priceInput = document.getElementById("resourcePrice");
-  const unitRadios = document.querySelectorAll('input[name="resourcePriceUnit"]');
-
-  // Create price preview element
-  const pricePreview = document.createElement("div");
-  pricePreview.style.marginTop = "5px";
-  pricePreview.style.fontSize = "0.9em";
-  pricePreview.style.color = "#2e7d32";
-  priceInput?.parentNode.appendChild(pricePreview);
-
-  // Live validation functions
-  function validateName() {
-    const isValid = nameInput.value.trim().length >= 3 && nameInput.value.trim().length <= 50;
-    setFieldState(nameInput, isValid);
-    return isValid;
+  const form = $("resourceForm");
+  if (!form) {
+    console.warn('resourceForm not found. Ensure the form has id="resourceForm".');
+    return;
   }
 
-  function validateDescription() {
-    const val = descInput.value.trim();
-    const isValid = val.length >= 5 && val.length <= 200 && !val.includes("<script");
-    setFieldState(descInput, isValid);
-    return isValid;
-  }
-
-  function validateAvailability() {
-    const isValid = availToggle.checked;
-    setFieldState(availToggle, isValid);
-    return isValid;
-  }
-
-  function validatePriceAndUnit() {
-    const price = Number(priceInput.value);
-    const unit = document.querySelector('input[name="resourcePriceUnit"]:checked')?.value;
-
-    const priceValid = !isNaN(price) && price > 0;
-    setFieldState(priceInput, priceValid);
-
-    const unitValid = !!unit;
-    unitRadios.forEach(r => setFieldState(r, unitValid));
-
-    // Live preview
-    if (priceValid && unitValid) {
-      pricePreview.textContent = `€ ${price.toFixed(2)} / ${unit}`;
-    } else {
-      pricePreview.textContent = "";
-    }
-
-    return priceValid && unitValid;
-  }
-
-  // Attach live validation
-  nameInput?.addEventListener("input", validateName);
-  descInput?.addEventListener("input", validateDescription);
-  availToggle?.addEventListener("change", validateAvailability);
-  priceInput?.addEventListener("input", validatePriceAndUnit);
-  unitRadios.forEach(r => r.addEventListener("change", validatePriceAndUnit));
-
-  // Form submission (unchanged + added basic check)
-  form.addEventListener("submit", async (event) => {
-    event.preventDefault();
-
-    const isNameValid = validateName();
-    const isDescValid = validateDescription();
-    const isAvailValid = validateAvailability();
-    const isPriceUnitValid = validatePriceAndUnit();
-
-    if (!isNameValid || !isDescValid || !isAvailValid || !isPriceUnitValid) {
-      console.warn("Form has invalid fields — submission blocked.");
-      return;
-    }
-
-    const submitter = event.submitter;
-    const actionValue = submitter?.value ?? "create";
-
-    const payload = {
-      action: actionValue,
-      resourceName: nameInput.value.trim(),
-      resourceDescription: descInput.value.trim(),
-      resourceAvailable: availToggle.checked,
-      resourcePrice: Number(priceInput.value),
-      resourcePriceUnit: document.querySelector("input[name='resourcePriceUnit']:checked")?.value ?? ""
-    };
-
-    console.log("Sending payload:", payload);
-
-    try {
-      const response = await fetch("/api/resources", {  // ← changed to real endpoint
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload)
-      });
-
-      const data = await response.json();
-      console.log("Response:", data);
-
-      if (data.ok) {
-        alert("Resource created successfully!");
-        form.reset();
-        // Reset styles
-        [nameInput, descInput, priceInput, availToggle, ...unitRadios].forEach(el => {
-          el.classList.remove("valid", "invalid");
-        });
-        pricePreview.textContent = "";
-      } else {
-        alert("Error: " + (data.errors?.map(e => e.msg).join(", ") || data.error));
-      }
-    } catch (err) {
-      console.error("POST error:", err);
-      alert("Network error: " + err.message);
-    }
-  });
+  form.addEventListener("submit", onSubmit);
 });
+
+async function onSubmit(event) {
+  event.preventDefault();
+
+  const submitter = event.submitter;
+  const actionValue = submitter?.value ?? "create";
+
+  const name = $("resourceName")?.value.trim() ?? "";
+  const description = $("resourceDescription")?.value.trim() ?? "";
+
+  if (!validateText(name) || !validateText(description)) {
+    console.warn("Invalid input — request not sent.");
+    return;
+  }
+
+  const payload = {
+    action: actionValue,
+    resourceName: name,
+    resourceDescription: description,
+    resourceAvailable: $("resourceAvailable")?.checked ?? false,
+    resourcePrice: $("resourcePrice")?.value ?? "",
+    resourcePriceUnit: $("resourcePriceUnit")?.value ?? ""
+  };
+
+  logSection("Sending payload to httpbin.org/post", payload);
+
+  try {
+    const response = await fetch("https://httpbin.org/post", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload)
+    });
+
+    if (!response.ok) {
+      const text = await response.text().catch(() => "");
+      throw new Error(`HTTP ${response.status} ${response.statusText}\n${text}`);
+    }
+
+    const data = await response.json();
+
+    console.group("Response from httpbin.org");
+    console.log("Status:", response.status);
+    console.log("URL:", data.url);
+    console.log("You sent (echo):", data.json);
+    console.log("Headers (echoed):", data.headers);
+    console.groupEnd();
+
+  } catch (err) {
+    console.error("POST error:", err);
+  }
+}
