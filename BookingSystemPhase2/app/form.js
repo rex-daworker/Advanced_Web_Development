@@ -17,8 +17,7 @@ function logSection(title, data) {
 
 // Check if a text field contains meaningful content
 export function validateText(value) {
-  const trimmed = value.trim();
-  return trimmed.length >= 2 && trimmed.length <= 120;   // ← improved (was >0)
+  return value.trim().length > 0;
 }
 
 // Apply green/red border based on validity

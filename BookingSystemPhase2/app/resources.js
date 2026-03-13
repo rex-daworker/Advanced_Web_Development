@@ -6,10 +6,9 @@ import { validateText, setFieldState } from "./form.js";
 const actions = document.getElementById("resourceActions");
 const resourceNameContainer = document.getElementById("resourceNameContainer");
 const resourceDescription = document.getElementById("resourceDescription");
-const priceInput = document.getElementById("resourcePrice");
 const form = document.getElementById("resourceForm");
 
-const role = "admin";   // ← you may want to make this dynamic later
+const role = "admin";
 
 let createButton = null;
 let updateButton = null;
@@ -68,7 +67,6 @@ function renderActionButtons(currentRole) {
     });
   }
 
-  // start disabled
   setButtonEnabled(createButton, false);
   setButtonEnabled(updateButton, false);
   setButtonEnabled(deleteButton, false);
@@ -96,46 +94,23 @@ function createResourceNameInput(container) {
 }
 
 // ===============================
-// Price validation
+// Combined validation for BOTH fields
 // ===============================
-function isValidPrice() {
-  if (!priceInput) return true;
-  const val = priceInput.value.trim();
-  if (val === "") return true;           // empty → free → allowed
-  const num = parseFloat(val);
-  return !isNaN(num) && num >= 0;
-}
+function updateCreateButton() {
+  const nameValid = validateText(resourceNameInput.value);
+  const descValid = validateText(resourceDescription.value);
 
-function setPriceFieldState() {
-  if (!priceInput) return;
-  const valid = isValidPrice();
-  setFieldState(priceInput, valid);
-}
-
-// ===============================
-// Combined validation & button state
-// ===============================
-function updateActionButtonsState() {
-  const nameValid  = validateText(resourceNameInput.value);
-  const descValid  = validateText(resourceDescription.value);
-  const priceValid = isValidPrice();
-
-  setFieldState(resourceNameInput,  nameValid);
+  setFieldState(resourceNameInput, nameValid);
   setFieldState(resourceDescription, descValid);
-  setPriceFieldState();
 
-  const formIsValid = nameValid && descValid && priceValid;
-
-  setButtonEnabled(createButton,  formIsValid);
-  setButtonEnabled(updateButton,  formIsValid);
-  setButtonEnabled(deleteButton,  formIsValid);
+  setButtonEnabled(createButton, nameValid && descValid);
 }
 
 // ===============================
-// Attach validation listeners
+// Attach validation to each field
 // ===============================
 function attachValidation(input) {
-  input.addEventListener("input", updateActionButtonsState);
+  input.addEventListener("input", updateCreateButton);
 }
 
 // ===============================
@@ -147,44 +122,43 @@ const resourceNameInput = createResourceNameInput(resourceNameContainer);
 
 attachValidation(resourceNameInput);
 attachValidation(resourceDescription);
-priceInput?.addEventListener("input", updateActionButtonsState);
 
-// Initialize state
-updateActionButtonsState();
+// Initialize state on load
+updateCreateButton();
 
 // ===============================
-// Form submit handling (real backend version)
+// Form submit handling
 // ===============================
 async function handleSubmit(e) {
   e.preventDefault();
-
   const submitter = e.submitter || null;
-  const action = submitter?.value || "create";
+  const action = submitter && submitter.value ? submitter.value : "create";
 
   const name = resourceNameInput.value.trim();
-  const description = resourceDescription.value.trim();
+  const desc = resourceDescription.value.trim();
 
-  const nameValid  = validateText(name);
-  const descValid  = validateText(description);
-  const priceValid = isValidPrice();
+  const nameValid = validateText(name);
+  const descValid = validateText(desc);
 
-  if (!nameValid || !descValid || !priceValid) {
-    updateActionButtonsState(); // refresh visual state
+  setFieldState(resourceNameInput, nameValid);
+  setFieldState(resourceDescription, descValid);
+
+  if (!nameValid || !descValid) {
+    setButtonEnabled(createButton, false);
     return;
   }
 
   const availableEl = document.getElementById("resourceAvailable");
-  const priceValue = priceInput?.value.trim() || "0";
-  const price = parseFloat(priceValue) || 0;
+  const priceEl = document.getElementById("resourcePrice");
   const priceUnit = form.querySelector('input[name="resourcePriceUnit"]:checked')?.value || "hour";
 
   const payload = {
-    action,
     name,
-    description,
-    available: availableEl?.checked ?? false,
-    price,
+    description: desc,
+    available: Boolean(availableEl?.checked),
+    price: priceEl && priceEl.value !== "" ? parseFloat(priceEl.value) : 0,
     priceUnit,
+    action,
   };
 
   try {
@@ -198,20 +172,19 @@ async function handleSubmit(e) {
     if (!res.ok) {
       const text = await res.text().catch(() => "");
       console.error("Save failed:", res.status, text);
-      alert(`Failed to save resource (HTTP ${res.status}). Check console.`);
+      alert("Failed to save resource (see console).");
       return;
     }
 
-    alert(`Resource ${action}d successfully.`);
-    
+    // Success
+    alert("Resource saved successfully.");
     if (action === "create") {
       form.reset();
-      updateActionButtonsState();
+      updateCreateButton();
     }
-
   } catch (err) {
-    console.error("Submit error:", err);
-    alert("Network or unexpected error occurred. See console.");
+    console.error(err);
+    alert("An error occurred while saving (see console).");
   }
 }
 
