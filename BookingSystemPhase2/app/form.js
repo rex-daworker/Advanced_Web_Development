@@ -1,208 +1,84 @@
-import { validateText, setFieldState } from "./form.js";
 
 // ===============================
-// Configuration & Constants
-// ===============================
-const ROLE = "admin";
-
-const BUTTON_BASE_CLASSES = "w-full rounded-2xl px-6 py-3 text-sm font-semibold transition-all duration-200 ease-out";
-const BUTTON_ENABLED_CLASSES = "bg-brand-primary text-white hover:bg-brand-dark/80 shadow-soft";
-const BUTTON_DISABLED_CLASSES = "bg-gray-300 text-gray-600 cursor-not-allowed opacity-60";
-
-// ===============================
-// DOM References
-// ===============================
-const actionsContainer = document.getElementById("resourceActions");
-const resourceNameContainer = document.getElementById("resourceNameContainer");
-const resourceDescription = document.getElementById("resourceDescription");
-const form = document.getElementById("resourceForm");
-
-// ===============================
-// State Management
-// ===============================
-let createButton = null;
-let resourceNameInput = null;
-
-// ===============================
-// UI Component Helpers
+// Form handling for resources page
 // ===============================
 
-/**
- * Creates and appends a styled button to the actions container.
- */
-function addButton({ label, type = "button", value, enabled = false }) {
-  const btn = document.createElement("button");
-  btn.type = type;
-  btn.textContent = label;
-  btn.name = "action";
-  
-  if (value) {
-    btn.value = value;
-  }
-
-  // Apply initial classes
-  btn.className = `${BUTTON_BASE_CLASSES} ${enabled ? BUTTON_ENABLED_CLASSES : BUTTON_DISABLED_CLASSES}`;
-  btn.disabled = !enabled;
-
-  actionsContainer.appendChild(btn);
-  return btn;
+// -------------- Helpers --------------
+function $(id) {
+  return document.getElementById(id);
 }
 
-/**
- * Toggles the enabled state and styling of a button.
- */
-function setButtonEnabled(btn, enabled) {
-  if (!btn) return;
-  btn.disabled = !enabled;
-  btn.className = `${BUTTON_BASE_CLASSES} ${enabled ? BUTTON_ENABLED_CLASSES : BUTTON_DISABLED_CLASSES}`;
+// Timestamp
+function timestamp() {
+  const now = new Date();
+  return now.toISOString().replace('T', ' ').replace('Z', '');
 }
 
-/**
- * Creates the name input field dynamically.
- */
-function createResourceNameInput(container) {
-  const input = document.createElement("input");
-  input.id = "resourceName";
-  input.name = "resourceName";
-  input.type = "text";
-  input.placeholder = "e.g., Meeting Room A";
-  input.required = true;
+// -------------- Form wiring --------------
+document.addEventListener("DOMContentLoaded", () => {
+  const form = $("resourceForm");
+  form.addEventListener("submit", onSubmit);
+});
 
-  input.className = `
-    mt-2 w-full rounded-2xl border border-black/10 bg-white
-    px-4 py-3 text-sm outline-none
-    focus:ring-2 focus:ring-brand-blue/30 transition-all duration-200 ease-out
-  `;
+async function onSubmit(event) {
+  event.preventDefault();
+  const submitter = event.submitter;
+  const actionValue = submitter && submitter.value ? submitter.value : "create";
+  const selectedUnit = document.querySelector('input[name="resourcePriceUnit"]:checked')?.value ?? "";
+  const priceRaw = $("resourcePrice")?.value ?? "";
+  const resourcePrice = priceRaw === "" ? 0 : Number(priceRaw);
 
-  container.appendChild(input);
-  return input;
-}
+  const payload = {
+    action: actionValue,
+    resourceName: $("resourceName")?.value ?? "",
+    resourceDescription: $("resourceDescription")?.value ?? "",
+    resourceAvailable: $("resourceAvailable")?.checked ?? false,
+    resourcePrice,
+    resourcePriceUnit: selectedUnit
+  };
 
-/**
- * Renders action buttons based on the user role.
- */
-function renderActionButtons(currentRole) {
-  if (currentRole === "admin") {
-    createButton = addButton({
-      label: "Create",
-      type: "submit",
-      value: "create",
-      enabled: false, // starts disabled
+  try {
+    console.log("--------------------------");
+    console.log("The request send to the server " + `[${timestamp()}]`);
+    console.log("--------------------------");
+    const response = await fetch("/api/resources", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify(payload)
     });
-    // Future: Add update & delete buttons here
+
+    if (!response.ok) {
+      const text = await response.text().catch(() => "");
+      throw new Error(`HTTP ${response.status} ${response.statusText}\n${text}`);
+    }
+
+    // Creates an alert and a log message
+    const data = await response.json();
+    let msg = "Server response " + `[${timestamp()}]\n`;
+    msg += "--------------------------\n";
+    msg += "Status ➡️ " + response.status + "\n";
+    msg += "Action ➡️ " + data.echo.action + "\n";
+    msg += "Name ➡️ "+ data.echo.resourceName + "\n";
+    msg += "Description ➡️ " + data.echo.resourceDescription + "\n";
+    msg += "Availability ➡️ " + data.echo.resourceAvailable + "\n";
+    msg += "Price ➡️ " + data.echo.resourcePrice + "\n";
+    msg += "Price unit ➡️ " + data.echo.resourcePriceUnit + "\n";
+
+    console.log("Server response " + `[${timestamp()}]`);
+    console.log("--------------------------");
+    console.log("Status ➡️ ", response.status);
+    console.log("Action ➡️ ", data.echo.action);
+    console.log("Name ➡️ ", data.echo.resourceName);
+    console.log("Description ➡️ ", data.echo.resourceDescription);
+    console.log("Availability ➡️ ", data.echo.resourceAvailable);
+    console.log("Price ➡️ ", data.echo.resourcePrice);
+
+    console.log("--------------------------");
+    alert(msg);
+
+  } catch (err) {
+    console.error("POST error:", err);
   }
-}
-
-// ===============================
-// Validation Logic
-// ===============================
-
-/**
- * Validates inputs and updates the UI state (field borders and button status).
- */
-function updateCreateButton() {
-  // Safety check to ensure elements exist before accessing .value
-  if (!resourceNameInput || !resourceDescription) return;
-
-  const nameValid = validateText(resourceNameInput.value);
-  const descValid = validateText(resourceDescription.value);
-
-  setFieldState(resourceNameInput, nameValid);
-  setFieldState(resourceDescription, descValid);
-
-  setButtonEnabled(createButton, nameValid && descValid);
-}
-
-/**
- * Attaches validation event listeners to an input element.
- */
-function attachValidation(input) {
-  if (!input) return;
-  input.addEventListener("input", updateCreateButton);
-  input.addEventListener("blur", updateCreateButton);
-}
-
-// ===============================
-// Initialization
-// ===============================
-
-// 1. Render Buttons
-renderActionButtons(ROLE);
-
-// 2. Create Dynamic Inputs
-resourceNameInput = createResourceNameInput(resourceNameContainer);
-
-// 3. Attach Listeners
-attachValidation(resourceNameInput);
-attachValidation(resourceDescription);
-
-// 4. Initial State Check
-updateCreateButton();
-
-// ===============================
-// Event Handlers
-// ===============================
-
-if (form) {
-  form.addEventListener("submit", async (e) => {
-    e.preventDefault();
-
-    const submitter = e.submitter;
-    const action = submitter?.value ?? "create";
-
-    if (action !== "create") {
-      alert("Only Create is implemented in this phase.");
-      return;
-    }
-
-    const name = resourceNameInput.value.trim();
-    const description = resourceDescription.value.trim();
-
-    const nameValid = validateText(name);
-    const descValid = validateText(description);
-
-    // Final check before sending
-    if (!nameValid || !descValid) {
-      updateCreateButton(); // refresh visuals
-      alert("Please fill in both name and description correctly.");
-      return;
-    }
-
-    // Retrieve optional extra fields (with safe defaults)
-    const available = document.getElementById("resourceAvailable")?.checked ?? false;
-    const priceStr = document.getElementById("resourcePrice")?.value ?? "0";
-    const price = priceStr !== "" ? Number(priceStr) : 0;
-    const priceUnit = form.querySelector('input[name="resourcePriceUnit"]:checked')?.value ?? "hour";
-
-    const payload = {
-      name,
-      description,
-      available,
-      price,
-      priceUnit,
-      action,
-    };
-
-    try {
-      const res = await fetch("/api/resources", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
-
-      if (!res.ok) {
-        let msg = await res.text().catch(() => "Server error");
-        alert(`Error: ${res.status} – ${msg}`);
-        return;
-      }
-
-      alert("Resource created successfully!");
-      form.reset();
-      updateCreateButton(); // disable button again
-
-    } catch (err) {
-      console.error(err);
-      alert("Network error – could not save resource.");
-    }
-  });
 }
