@@ -1,13 +1,12 @@
 require("dotenv").config();
-const crypto = require('crypto');
 const express = require("express");
 const app = express();
-const PORT = process.env.IPORT;
+const PORT = process.env.IPORT || 5000;
 const path = require('path');
 const { Pool } = require('pg');
 const { body, validationResult } = require('express-validator');
 
-// Timestamp
+// Timestamp helper
 function timestamp() {
   const now = new Date();
   return now.toISOString().replace('T', ' ').replace('Z', '');
@@ -16,65 +15,62 @@ function timestamp() {
 // --- Middleware ---
 app.use(express.json()); // Parse application/json
 
-// Serve everything in ./public as static assets
+// Serve static files from ./public
 const publicDir = path.join(__dirname, "public");
 app.use(express.static(publicDir));
 
-// --- Views (HTML pages) ---
-// GET / -> serve index.html
+// --- Routes (HTML pages) ---
 app.get("/", (req, res) => {
   res.sendFile(path.join(publicDir, "index.html"));
 });
 
-// Optional: GET /resources -> serve resources.html directly
 app.get('/resources', (req, res) => {
   res.sendFile(path.join(publicDir, 'resources.html'));
 });
 
-// --- Postgres pool (reads PG* from .env) ---
+// --- Database connection ---
 const pool = new Pool({});
 
-// --- express-validator rules for the payload ---
+// --- Validation rules ---
 const resourceValidators = [
   body('action')
     .exists({ checkFalsy: true }).withMessage('action is required')
     .trim()
-    .isIn(['create'])
-    .withMessage("action must be 'create'"),
+    .isIn(['create']).withMessage("action must be 'create'"),
 
   body('resourceName')
     .exists({ checkFalsy: true }).withMessage('resourceName is required')
     .isString().withMessage('resourceName must be a string')
     .trim()
-    .escape(),
+    .escape()
+    .isLength({ min: 5, max: 30 }).withMessage('resourceName must be 5–30 characters'),
 
   body('resourceDescription')
     .exists({ checkFalsy: true }).withMessage('resourceDescription is required')
     .isString().withMessage('resourceDescription must be a string')
     .trim()
-    .isLength({ min:10, max: 50 }).withMessage('resourceDescription must be 10-50 characters'),
+    .isLength({ min: 10, max: 50 }).withMessage('resourceDescription must be 10–50 characters'),
 
   body('resourceAvailable')
     .exists({ checkFalsy: true }).withMessage('resourceAvailable is required')
     .isBoolean().withMessage('resourceAvailable must be boolean')
-    .toBoolean(), // coercion
+    .toBoolean(),
 
   body('resourcePrice')
     .exists({ checkFalsy: true }).withMessage('resourcePrice is required')
     .isFloat({ min: 0 }).withMessage('resourcePrice must be a non-negative number')
-    .toFloat(), // coercion
+    .toFloat(),
 
   body('resourcePriceUnit')
     .exists({ checkFalsy: true }).withMessage('resourcePriceUnit is required')
     .isString().withMessage('resourcePriceUnit must be a string')
     .trim()
-    .isIn(['hour', 'day'])
+    .isIn(['hour', 'day', 'week', 'month'])
     .withMessage("resourcePriceUnit must be 'hour', 'day', 'week', or 'month'"),
 ];
 
-// POST /api/resources -> create (minimal)
+// POST /api/resources - Create resource
 app.post('/api/resources', resourceValidators, async (req, res) => {
-  // Validate input
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
     return res.status(400).json({
@@ -83,32 +79,54 @@ app.post('/api/resources', resourceValidators, async (req, res) => {
     });
   }
 
-  // Pull normalized values (coerced by express-validator .toBoolean/.toFloat)
+  // Extract validated & coerced values
   let {
-    action = '',
-    resourceName = '',
-    resourceDescription = '',
-    resourceAvailable = false,
-    resourcePrice = 0,
-    resourcePriceUnit = ''
+    action,
+    resourceName,
+    resourceDescription,
+    resourceAvailable,
+    resourcePrice,
+    resourcePriceUnit
   } = req.body;
 
-  // Log (optional)
-  console.log("The client's POST request ", `[${timestamp()}]`);
+  // Sanitize inputs to prevent XSS / dangerous content
+  const cleanName = resourceName.trim()
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+
+  let cleanDescription = resourceDescription.trim()
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+
+  // Extra protection: reject if it still looks like a script tag after escaping
+  if (cleanDescription.includes('<script') || cleanDescription.includes('alert(')) {
+    return res.status(400).json({
+      ok: false,
+      error: "Invalid description",
+      details: "Description contains disallowed content (scripts or executable code)."
+    });
+  }
+
+  // Optional logging
+  console.log(`[${timestamp()}] POST /api/resources`);
   console.log('------------------------------');
-  console.log('Action ➡️ ', action);
-  console.log('Name ➡️ ', resourceName);
-  console.log('Description ➡️ ', resourceDescription);
-  console.log('Availability ➡️ ', resourceAvailable);
-  console.log('Price ➡️ ', resourcePrice);
-  console.log('Price unit ➡️ ', resourcePriceUnit);
+  console.log('Action       ➡️', action);
+  console.log('Name         ➡️', cleanName);
+  console.log('Description  ➡️', cleanDescription);
+  console.log('Available    ➡️', resourceAvailable);
+  console.log('Price        ➡️', resourcePrice);
+  console.log('Unit         ➡️', resourcePriceUnit);
   console.log('------------------------------');
 
   if (action !== 'create') {
     return res.status(400).json({ ok: false, error: 'Only create is implemented right now' });
   }
-
-  resourceAvailable = false;
 
   try {
     const insertSql = `
@@ -116,30 +134,42 @@ app.post('/api/resources', resourceValidators, async (req, res) => {
       VALUES ($1, $2, $3, $4, $5)
       RETURNING id, name, description, available, price, price_unit, created_at
     `;
+
     const params = [
-      crypto.createHash('sha256').update(resourceName, 'utf8').digest('hex'),
-      resourceDescription,
+      cleanName,
+      cleanDescription,
       Boolean(resourceAvailable),
-      Number(resourcePrice)*2,
+      Number(resourcePrice),
       resourcePriceUnit
     ];
 
     const { rows } = await pool.query(insertSql, params);
     const created = rows[0];
 
+    console.log(`[${timestamp()}] Resource created: "${created.name}" (ID: ${created.id})`);
+
     return res.status(201).json({ ok: true, data: created });
+
   } catch (err) {
-    console.error('DB insert failed:', err);
+    if (err.code === '23505') { // PostgreSQL unique violation (duplicate name)
+      return res.status(409).json({
+        ok: false,
+        error: "Duplicate resource name",
+        details: `A resource named "${resourceName}" already exists. Please choose a different name.`
+      });
+    }
+
+    console.error('DB insert failed:', err.message);
     return res.status(500).json({ ok: false, error: 'Database error' });
   }
 });
 
-// --- Fallback 404 for unknown API routes ---
+// 404 for unknown API routes
 app.use('/api', (req, res) => {
   res.status(404).json({ error: 'Not found' });
 });
 
-// --- Start server ---
+// Start server
 app.listen(PORT, () => {
   console.log(`Server listening on http://localhost:${PORT}`);
 });
