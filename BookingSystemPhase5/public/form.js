@@ -151,16 +151,20 @@ async function onSubmit(event) {
       // 400 = server-side validation errors (we expect errors[])
       if (response.status === 400) {
         const msg = buildValidationMessage(body?.errors);
-        showFormMessage("error", msg);
+        showFormMessage(
+          "error",
+          `Please correct the following problems:\n\n${msg}\n\n(remember: name 5–30 characters, description 10–50 characters)`
+        );
         return;
       }
 
       // 409 = duplicate resourceName (our new feature)
       if (response.status === 409) {
-        const msg =
-          body?.details ||
-          "A resource with the same name already exists. Please choose another name.";
-        showFormMessage("info", `Duplicate blocked (409):\n\n${msg}`);
+        const name = payload.resourceName.trim();
+        showFormMessage(
+          "info",
+          `Cannot create resource\n\nThe name "${name}" is already in use.\nPlease choose a different name.`
+        );
         return;
       }
 
@@ -178,13 +182,14 @@ async function onSubmit(event) {
       ? createdAtIso.replace("T", " ").replace("Z", "")
       : "";
 
-    const msgLines = [];
-    msgLines.push(`Name ➡️ ${body?.data?.name ?? ""}`);
-    if (createdAt) msgLines.push(`Created at ➡️ ${createdAt}`);
-    msgLines.push(`ID in database ➡️ ${body?.data?.id ?? ""}`);
+    // Success message – friendly and concise
+    const resourceName = body?.data?.name || payload.resourceName || "the resource";
+    const createdAtText = createdAt ? ` on ${createdAt}` : "";
 
-    const msg = msgLines.join("\n");
-    showFormMessage("success", msg);
+    showFormMessage(
+      "success",
+      `Success!\n\n"${resourceName}" was created successfully${createdAtText}.`
+    );
 
     // Notify UI layer (resources.js)
     if (typeof window.onResourceActionSuccess === "function") {

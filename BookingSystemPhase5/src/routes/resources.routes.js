@@ -72,7 +72,7 @@ router.post("/", resourceValidators, async (req, res) => {
     const resourceId = rows[0].id;
     await logEvent({
       actorUserId,
-      message: `XXXX ${resourceId} XXXX`,
+      message: `RESOURCE_CREATED: name="${resourceName}", description="${resourceDescription || '—'}", available=${resourceAvailable}, price=${resourcePrice}, unit="${resourcePriceUnit}"`,
       entityType: "resource",
       entityId: resourceId,
     });
@@ -85,7 +85,7 @@ router.post("/", resourceValidators, async (req, res) => {
       console.error(err);
       await logEvent({
         actorUserId,
-        message: `YYYY ${resourceName} YYYY`,
+        message: `RESOURCE_CREATE_BLOCKED_DUPLICATE: name="${resourceName}" already exists (409)`,
         entityType: "resource",
         entityId: null,
       });
