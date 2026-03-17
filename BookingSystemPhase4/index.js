@@ -169,7 +169,7 @@ app.use('/api', (req, res) => {
   res.status(404).json({ error: 'Not found' });
 });
 
-// Start server
+// Start server 
 app.listen(PORT, () => {
   console.log(`Server listening on http://localhost:${PORT}`);
 });
