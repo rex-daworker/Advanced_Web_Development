@@ -30,7 +30,7 @@ async function onSubmit(event) {
 
   const payload = {
     action: actionValue,
-    resourceName: $("resourceNamee")?.value ?? "",
+    resourceName: $("resourceName")?.value ?? "",
     resourceDescription: $("resourceDescription")?.value ?? "",
     resourceAvailable: $("resourceAvailable")?.checked ?? false,
     resourcePrice,
@@ -55,25 +55,23 @@ async function onSubmit(event) {
     }
 
     // Creates an alert and a log message
-    const data = await response.json();
-    let msg = "Server response " + `[${timestamp()}]\n`;
-    msg += "--------------------------\n";
-    msg += "Status ➡️ " + response.status + "\n";
-    msg += "Action ➡️ " + data.echo.action + "\n";
-    msg += "Name ➡️ "+ data.echo.resourceName + "\n";
-    msg += "Description ➡️ " + data.echo.resourceDescription + "\n";
-    msg += "Availability ➡️ " + data.echo.resourceAvailable + "\n";
-    msg += "Price unit ➡️ " + data.echo.resourcePriceUnit + "\n";
+    const resp = await response.json();
+    const created_at =resp.data.created_at.replace('T', ' ').replace('Z', '');
+    
+    msg = "Name ➡️ "+ resp.data.name + "\n";
+    msg += "Created at ➡️ " + created_at + "\n";
+    msg += "ID in database ➡️ "+ resp.data.id + "\n";
 
     console.log("Server response " + `[${timestamp()}]`);
     console.log("--------------------------");
     console.log("Status ➡️ ", response.status);
-    console.log("Action ➡️ ", data.echo.action);
-    console.log("Name ➡️ ", data.echo.resourceName);
-    console.log("Description ➡️ ", data.echo.resourceDescription);
-    console.log("Availability ➡️ ", data.echo.resourceAvailable);
-    console.log("Price ➡️ ", data.echo.resourcePrice);
-
+    console.log("Name ➡️ ", resp.data.name);
+    console.log("Description ➡️ ", resp.data.description);
+    console.log("Availability ➡️ ", resp.data.available);
+    console.log("Price ➡️ ", resp.data.price);
+    console.log("Price unit ➡️ ", resp.data.price_unit);
+    console.log("Created at ➡️ " + created_at);
+    console.log("ID in database ➡️ "+ resp.data.id);
     console.log("--------------------------");
     alert(msg);
 
