@@ -43,7 +43,7 @@ app.post("/api/resources", (req, res) => {
   // Normalize inputs
   const resourceAction = String(action).trim();
   const name = String(resourceName).trim();
-  const description = "";
+  const description = String(resourceDescription).trim();
   const available = Boolean(resourceAvailable);
   const price = Number.isFinite(Number(resourcePrice))
     ? Number(resourcePrice)
@@ -65,7 +65,6 @@ app.post("/api/resources", (req, res) => {
 // --- Fallback 404 for unknown API routes ---
 app.use("/api", (req, res) => {
   res.status(404).json({ error: "Not found" });
-  res.json({ ok: true });
 });
 
 // --- Start server ---
