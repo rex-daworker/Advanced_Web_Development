@@ -64,39 +64,16 @@ function setButtonEnabled(btn, enabled) {
 }
 
 function renderActionButtons(currentRole) {
-  if (currentRole === "reserver") {
-    createButton = addButton({
-      label: "Create",
-      type: "submit",
-      classes: BUTTON_ENABLED_CLASSES,
-    });
-  }
+  actions.innerHTML = ""; // clear previous buttons
 
-  if (currentRole === "admin") {
-    createButton = addButton({
-      label: "Create",
-      type: "submit",
-      value: "create",
-      classes: BUTTON_ENABLED_CLASSES,
-    });
+  createButton = addButton({
+    label: "Create",
+    type: "submit",
+    value: "create",
+    classes: BUTTON_ENABLED_CLASSES,
+  });
 
-    updateButton = addButton({
-      label: "Update",
-      value: "update",
-      classes: BUTTON_ENABLED_CLASSES,
-    });
-
-    deleteButton = addButton({
-      label: "Delete",
-      value: "delete",
-      classes: BUTTON_ENABLED_CLASSES,
-    });
-  }
-
-  // Default: Buttons are disabled until validation says it's OK
-  setButtonEnabled(createButton, false);
-  setButtonEnabled(updateButton, false);
-  setButtonEnabled(deleteButton, false);
+  setButtonEnabled(createButton, false); // disabled by default
 }
 
 // ===============================
@@ -125,26 +102,20 @@ function createResourceNameInput(container) {
 
 function isResourceNameValid(value) {
   const trimmed = value.trim();
+  if (trimmed.length < 5 || trimmed.length > 30) return false;
 
-  // Allowed: letters, numbers, Finnish letters, and space (based on your current regex)
+  // Allowed: letters (incl. Finnish), numbers, spaces ONLY
   const allowedPattern = /^[a-zA-Z0-9äöåÄÖÅ ]+$/;
-
-  const lengthValid = trimmed.length >= 5 && trimmed.length <= 30;
-  const charactersValid = allowedPattern.test(trimmed);
-
-  return lengthValid && charactersValid;
+  return allowedPattern.test(trimmed);
 }
 
 function isResourceDescriptionValid(value) {
   const trimmed = value.trim();
+  if (trimmed.length < 10 || trimmed.length > 50) return false;
 
-  // Allowed: letters, numbers, Finnish letters, and space (based on your current regex)
-  const allowedPattern = /^[a-zA-Z0-9äöåÄÖÅ ><!\?\-\+\/\\]+$/;
-
-  const lengthValid = trimmed.length >= 10 && trimmed.length <= 50;
-  const charactersValid = allowedPattern.test(trimmed);
-
-  return lengthValid && charactersValid;
+  // Same allowed characters as name
+  const allowedPattern = /^[a-zA-Z0-9äöåÄÖÅ ]+$/;
+  return allowedPattern.test(trimmed);
 }
 
 function createResourceDescriptionArea(container) {
@@ -196,49 +167,28 @@ function setInputVisualState(input, state) {
 
 function attachResourceNameValidation(input) {
   const update = () => {
-    const raw = input.value;
-    if (raw.trim() === "") {
-      setInputVisualState(input, "neutral");
-      setButtonEnabled(createButton, false);
-      return;
-    }
+    const value = input.value;
+    resourceNameValid = isResourceNameValid(value);
 
-    //const valid = isResourceNameValid(raw);
-    resourceNameValid = isResourceNameValid(raw);
-
-    setInputVisualState(input, resourceNameValid ? "valid" : "invalid");
-    //setButtonEnabled(createButton, valid);
+    setInputVisualState(input, resourceNameValid ? "valid" : (value.trim() === "" ? "neutral" : "invalid"));
     setButtonEnabled(createButton, resourceNameValid && resourceDescriptionValid);
   };
 
-  // Real-time validation
   input.addEventListener("input", update);
-
-  // Initialize state on page load (Create disabled until valid)
-  update();
+  update(); // initial check
 }
 
 function attachResourceDescriptionValidation(input) {
   const update = () => {
-    const raw = input.value;
-    if (raw.trim() === "") {
-      setInputVisualState(input, "neutral");
-      setButtonEnabled(createButton, false);
-      return;
-    }
+    const value = input.value;
+    resourceDescriptionValid = isResourceDescriptionValid(value);
 
-    //const valid = isResourceDescriptionValid(raw);
-    resourceDescriptionValid = isResourceDescriptionValid(raw);
-
-    setInputVisualState(input, resourceDescriptionValid ? "valid" : "invalid");
+    setInputVisualState(input, resourceDescriptionValid ? "valid" : (value.trim() === "" ? "neutral" : "invalid"));
     setButtonEnabled(createButton, resourceNameValid && resourceDescriptionValid);
   };
 
-  // Real-time validation
   input.addEventListener("input", update);
-
-  // Initialize state on page load (Create disabled until valid)
-  update();
+  update(); // initial check
 }
 
 
