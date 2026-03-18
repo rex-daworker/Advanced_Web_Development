@@ -1,7 +1,8 @@
+import { isValidText } from './form.js';
+
 // ===============================
 // Form handling for resources page
 // ===============================
-import { isValidText } from './form.js';
 
 // -------------- Helpers --------------
 function $(id) {
@@ -273,9 +274,9 @@ async function onSubmit(event) {
   const nameTrimmed = nameRaw.trim();
   const descTrimmed = descRaw.trim();
 
-  if (!isValidText(nameRaw) || !isValidText(descRaw)) {   // ← using imported function
+  if (!isValidText(nameRaw) || !isValidText(descRaw)) {
     alert("Name and description are required.");
-    return;
+    return; // prevent sending bad data
   }
   // ────────────────────────────────────────────────
 
@@ -317,7 +318,7 @@ async function onSubmit(event) {
     msg += "--------------------------\n";
     msg += "Status ➡️ " + response.status + "\n";
     msg += "Action ➡️ " + data.echo.action + "\n";
-    msg += "Name ➡️ " + data.echo.resourceName + "\n";
+    msg += "Name ➡️ "+ data.echo.resourceName + "\n";
     msg += "Description ➡️ " + data.echo.resourceDescription + "\n";
     msg += "Availability ➡️ " + data.echo.resourceAvailable + "\n";
     msg += "Price unit ➡️ " + data.echo.resourcePriceUnit + "\n";
