@@ -1,101 +1,29 @@
+// FORM VALIDATION LOGIC
 
-// ===============================
-// Form handling for resources page
-// ===============================
+const nameInput = document.getElementById("resourceName");
+const descInput = document.getElementById("resourceDescription");
+const createBtn = document.getElementById("createBtn");
 
-// -------------- Helpers --------------
-function $(id) {
-  return document.getElementById(id);
+// Basic text validation
+function isValidText(value) {
+    const trimmed = value.trim();
+    return trimmed.length > 0;
 }
 
-// Timestamp
-function timestamp() {
-  const now = new Date();
-  return now.toISOString().replace('T', ' ').replace('Z', '');
+// Update UI + button state
+function validateForm() {
+    const nameOk = isValidText(nameInput.value);
+    const descOk = isValidText(descInput.value);
+
+    nameInput.className = nameOk ? "valid" : "invalid";
+    descInput.className = descOk ? "valid" : "invalid";
+
+    createBtn.disabled = !(nameOk && descOk);
 }
 
-// -------------- Form wiring --------------
-document.addEventListener("DOMContentLoaded", () => {
-  const form = $("resourceForm");
-  form.addEventListener("submit", onSubmit);
-});
+// Attach listeners
+nameInput.addEventListener("input", validateForm);
+descInput.addEventListener("input", validateForm);
 
-async function onSubmit(event) {
-  event.preventDefault();
-
-  // ────────────────────────────────────────────────
-  // Added: basic client-side guard + trimming
-  // ────────────────────────────────────────────────
-  const nameRaw = $("resourceName")?.value ?? "";
-  const descRaw = $("resourceDescription")?.value ?? "";
-
-  const nameTrimmed = nameRaw.trim();
-  const descTrimmed = descRaw.trim();
-
-  if (nameTrimmed === "" || descTrimmed === "") {
-    alert("Name and description are required.");
-    return; // prevent sending bad data
-  }
-  // ────────────────────────────────────────────────
-
-  const submitter = event.submitter;
-  const actionValue = submitter && submitter.value ? submitter.value : "create";
-  const selectedUnit = document.querySelector('input[name="resourcePriceUnit"]:checked')?.value ?? "";
-  const priceRaw = $("resourcePrice")?.value ?? "";
-  const resourcePrice = priceRaw === "" ? 0 : Number(priceRaw);
-
-  const payload = {
-    action: actionValue,
-    resourceName: nameTrimmed,          // ← now trimmed
-    resourceDescription: descTrimmed,   // ← now trimmed
-    resourceAvailable: $("resourceAvailable")?.checked ?? false,
-    resourcePrice,
-    resourcePriceUnit: selectedUnit
-  };
-
-  // rest of your fetch code remains unchanged...
-
-  try {
-    console.log("--------------------------");
-    console.log("The request send to the server " + `[${timestamp()}]`);
-    console.log("--------------------------");
-    const response = await fetch("/api/resources", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify(payload)
-    });
-
-    if (!response.ok) {
-      const text = await response.text().catch(() => "");
-      throw new Error(`HTTP ${response.status} ${response.statusText}\n${text}`);
-    }
-
-    // Creates an alert and a log message
-    const data = await response.json();
-    let msg = "Server response " + `[${timestamp()}]\n`;
-    msg += "--------------------------\n";
-    msg += "Status ➡️ " + response.status + "\n";
-    msg += "Action ➡️ " + data.echo.action + "\n";
-    msg += "Name ➡️ "+ data.echo.resourceName + "\n";
-    msg += "Description ➡️ " + data.echo.resourceDescription + "\n";
-    msg += "Availability ➡️ " + data.echo.resourceAvailable + "\n";
-    msg += "Price unit ➡️ " + data.echo.resourcePriceUnit + "\n";
-
-    console.log("Server response " + `[${timestamp()}]`);
-    console.log("--------------------------");
-    console.log("Status ➡️ ", response.status);
-    console.log("Action ➡️ ", data.echo.action);
-    console.log("Name ➡️ ", data.echo.resourceName);
-    console.log("Description ➡️ ", data.echo.resourceDescription);
-    console.log("Availability ➡️ ", data.echo.resourceAvailable);
-    console.log("Price ➡️ ", data.echo.resourcePrice);
-
-    console.log("--------------------------");
-    alert(msg);
-
-  } catch (err) {
-    console.error("POST error:", err);
-  }
-}
+// Export validation for resources.js
+export { isValidText };

@@ -1,4 +1,19 @@
 // ===============================
+// Form handling for resources page
+// ===============================
+
+// -------------- Helpers --------------
+function $(id) {
+  return document.getElementById(id);
+}
+
+// Timestamp
+function timestamp() {
+  const now = new Date();
+  return now.toISOString().replace('T', ' ').replace('Z', '');
+}
+
+// ===============================
 // 1) DOM references
 // ===============================
 const actions = document.getElementById("resourceActions");
@@ -124,24 +139,11 @@ function createResourceNameInput(container) {
 function isResourceNameValid(value) {
   const trimmed = value.trim();
   return trimmed.length >= 1 && trimmed.length <= 50;  // very lenient
-  // or keep your original stricter version
 }
 
 function isResourceDescriptionValid(value) {
   const trimmed = value.trim();
   return trimmed.length >= 1 && trimmed.length <= 200;
-}
-
-function isResourceDescriptionValid(value) {
-  const trimmed = value.trim();
-
-  // Allowed: letters, numbers, Finnish letters, and space (based on your current regex)
-  const allowedPattern = /^[a-zA-Z0-9äöåÄÖÅ ><!\?\-\+\/\\]+$/;
-
-  const lengthValid = trimmed.length >= 10 && trimmed.length <= 50;
-  const charactersValid = allowedPattern.test(trimmed);
-
-  return lengthValid && charactersValid;
 }
 
 function createResourceDescriptionArea(container) {
@@ -153,7 +155,6 @@ function createResourceDescriptionArea(container) {
   textarea.rows = 5;
   textarea.placeholder =
     "Describe location, capacity, included equipment, or any usage notes…";
-
 
   // Base Tailwind styling (single source of truth)
   textarea.className = `
@@ -179,7 +180,6 @@ function setInputVisualState(input, state) {
   );
 
   // Ensure base focus style is present when neutral
-  // (If we are valid/invalid, we override ring color but keep ring behavior)
   input.classList.add("focus:ring-2");
 
   if (state === "valid") {
@@ -200,11 +200,9 @@ function attachResourceNameValidation(input) {
       return;
     }
 
-    //const valid = isResourceNameValid(raw);
     resourceNameValid = isResourceNameValid(raw);
 
     setInputVisualState(input, resourceNameValid ? "valid" : "invalid");
-    //setButtonEnabled(createButton, valid);
     setButtonEnabled(createButton, resourceNameValid && resourceDescriptionValid);
   };
 
@@ -224,7 +222,6 @@ function attachResourceDescriptionValidation(input) {
       return;
     }
 
-    //const valid = isResourceDescriptionValid(raw);
     resourceDescriptionValid = isResourceDescriptionValid(raw);
 
     setInputVisualState(input, resourceDescriptionValid ? "valid" : "invalid");
@@ -237,7 +234,6 @@ function attachResourceDescriptionValidation(input) {
   // Initialize state on page load (Create disabled until valid)
   update();
 }
-
 
 // ===============================
 // 4) Bootstrapping — MODIFIED MINIMALLY
@@ -256,4 +252,88 @@ if (resourceNameInput && resourceDescriptionArea) {
     attachResourceDescriptionValidation(resourceDescriptionArea);
 } else {
     console.error("Required input fields not found in HTML");
+}
+
+// -------------- Form wiring --------------
+document.addEventListener("DOMContentLoaded", () => {
+  const form = $("resourceForm");
+  form.addEventListener("submit", onSubmit);
+});
+
+async function onSubmit(event) {
+  event.preventDefault();
+
+  // ────────────────────────────────────────────────
+  // Added: basic client-side guard + trimming
+  // ────────────────────────────────────────────────
+  const nameRaw = $("resourceName")?.value ?? "";
+  const descRaw = $("resourceDescription")?.value ?? "";
+
+  const nameTrimmed = nameRaw.trim();
+  const descTrimmed = descRaw.trim();
+
+  if (nameTrimmed === "" || descTrimmed === "") {
+    alert("Name and description are required.");
+    return; // prevent sending bad data
+  }
+  // ────────────────────────────────────────────────
+
+  const submitter = event.submitter;
+  const actionValue = submitter && submitter.value ? submitter.value : "create";
+  const selectedUnit = document.querySelector('input[name="resourcePriceUnit"]:checked')?.value ?? "";
+  const priceRaw = $("resourcePrice")?.value ?? "";
+  const resourcePrice = priceRaw === "" ? 0 : Number(priceRaw);
+
+  const payload = {
+    action: actionValue,
+    resourceName: nameTrimmed,          // ← now trimmed
+    resourceDescription: descTrimmed,   // ← now trimmed
+    resourceAvailable: $("resourceAvailable")?.checked ?? false,
+    resourcePrice,
+    resourcePriceUnit: selectedUnit
+  };
+
+  try {
+    console.log("--------------------------");
+    console.log("The request send to the server " + `[${timestamp()}]`);
+    console.log("--------------------------");
+    const response = await fetch("/api/resources", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify(payload)
+    });
+
+    if (!response.ok) {
+      const text = await response.text().catch(() => "");
+      throw new Error(`HTTP ${response.status} ${response.statusText}\n${text}`);
+    }
+
+    // Creates an alert and a log message
+    const data = await response.json();
+    let msg = "Server response " + `[${timestamp()}]\n`;
+    msg += "--------------------------\n";
+    msg += "Status ➡️ " + response.status + "\n";
+    msg += "Action ➡️ " + data.echo.action + "\n";
+    msg += "Name ➡️ "+ data.echo.resourceName + "\n";
+    msg += "Description ➡️ " + data.echo.resourceDescription + "\n";
+    msg += "Availability ➡️ " + data.echo.resourceAvailable + "\n";
+    msg += "Price unit ➡️ " + data.echo.resourcePriceUnit + "\n";
+
+    console.log("Server response " + `[${timestamp()}]`);
+    console.log("--------------------------");
+    console.log("Status ➡️ ", response.status);
+    console.log("Action ➡️ ", data.echo.action);
+    console.log("Name ➡️ ", data.echo.resourceName);
+    console.log("Description ➡️ ", data.echo.resourceDescription);
+    console.log("Availability ➡️ ", data.echo.resourceAvailable);
+    console.log("Price ➡️ ", data.echo.resourcePrice);
+
+    console.log("--------------------------");
+    alert(msg);
+
+  } catch (err) {
+    console.error("POST error:", err);
+  }
 }
