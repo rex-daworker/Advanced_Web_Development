@@ -22,6 +22,22 @@ document.addEventListener("DOMContentLoaded", () => {
 
 async function onSubmit(event) {
   event.preventDefault();
+
+  // ────────────────────────────────────────────────
+  // Added: basic client-side guard + trimming
+  // ────────────────────────────────────────────────
+  const nameRaw = $("resourceName")?.value ?? "";
+  const descRaw = $("resourceDescription")?.value ?? "";
+
+  const nameTrimmed = nameRaw.trim();
+  const descTrimmed = descRaw.trim();
+
+  if (nameTrimmed === "" || descTrimmed === "") {
+    alert("Name and description are required.");
+    return; // prevent sending bad data
+  }
+  // ────────────────────────────────────────────────
+
   const submitter = event.submitter;
   const actionValue = submitter && submitter.value ? submitter.value : "create";
   const selectedUnit = document.querySelector('input[name="resourcePriceUnit"]:checked')?.value ?? "";
@@ -30,12 +46,14 @@ async function onSubmit(event) {
 
   const payload = {
     action: actionValue,
-    resourceName: $("resourceNamee")?.value ?? "",
-    resourceDescription: $("resourceDescription")?.value ?? "",
+    resourceName: nameTrimmed,          // ← now trimmed
+    resourceDescription: descTrimmed,   // ← now trimmed
     resourceAvailable: $("resourceAvailable")?.checked ?? false,
     resourcePrice,
     resourcePriceUnit: selectedUnit
   };
+
+  // rest of your fetch code remains unchanged...
 
   try {
     console.log("--------------------------");

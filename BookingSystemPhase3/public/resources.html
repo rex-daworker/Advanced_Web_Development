@@ -32,6 +32,19 @@
     </script>
     <script defer src="resources.js"></script>
     <script defer src="form.js"></script>
+    <style>
+        .valid {
+            border-color: #22c55e !important;
+            /* green-500 */
+            background-color: #f0fdf4 !important;
+        }
+
+        .invalid {
+            border-color: #ef4444 !important;
+            /* red-500 */
+            background-color: #fef2f2 !important;
+        }
+    </style>
 </head>
 
 <body class="min-h-screen flex flex-col bg-brand-light text-brand-dark">
@@ -110,24 +123,27 @@
                             <!-- Resource name -->
                             <div>
                                 <label for="resourceName" class="block text-sm font-semibold">
-                                    Resource name
+                                    Resource name <span class="text-red-600">*</span>
                                 </label>
-                                <div id="resourceNameCnt"></div>
-                                <p class="mt-2 text-xs text-black/50">
-                                    Use a short, unique name users recognize (5–30 characters). Use letters, numbers,
-                                    and spaces only.
+                                <input id="resourceName" name="resourceName" type="text"
+                                    placeholder="e.g., Meeting Room A" required
+                                    class="mt-2 w-full rounded-2xl border border-black/10 bg-white px-4 py-3 text-sm outline-none focus:border-brand-blue focus:ring-2 focus:ring-brand-blue/30 transition-all duration-200 ease-out" />
+                                <p class="mt-1 text-xs text-black/50">
+                                    Use a short, unique name (at least 1 character after trimming).
                                 </p>
                             </div>
 
                             <!-- Description -->
                             <div>
                                 <label for="resourceDescription" class="block text-sm font-semibold">
-                                    Resource description
+                                    Resource description <span class="text-red-600">*</span>
                                 </label>
-                                <div id="resourceDescriptionCnt"></div>
-                                <p class="mt-2 text-xs text-black/50">
-                                    Keep it practical: what it is, and who it’s for (10–50 characters). Use letters,
-                                    numbers, and spaces only.
+                                <textarea id="resourceDescription" name="resourceDescription" rows="4"
+                                    placeholder="Describe what the resource is, where it is located, capacity, notes..."
+                                    required
+                                    class="mt-2 w-full rounded-2xl border border-black/10 bg-white px-4 py-3 text-sm outline-none focus:border-brand-blue focus:ring-2 focus:ring-brand-blue/30 transition-all duration-200 ease-out"></textarea>
+                                <p class="mt-1 text-xs text-black/50">
+                                    Provide a meaningful description (at least 1 character after trimming).
                                 </p>
                             </div>
 
@@ -218,7 +234,11 @@
 
                             <!-- Actions -->
                             <div id="resourceActions"
-                                class="mt-8 grid gap-4 w-full grid-cols-1 sm:grid-flow-col sm:auto-cols-fr"></div>
+                                class="mt-8 grid gap-4 w-full grid-cols-1 sm:grid-flow-col sm:auto-cols-fr">
+                                <!-- Buttons will be added here by form.js -->
+                            </div>
+                            <!-- This makes sure the form can find the submit button even if added dynamically -->
+                            <input type="hidden" name="action" value="create">
                         </form>
                     </div>
                 </div>

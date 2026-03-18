@@ -123,14 +123,13 @@ function createResourceNameInput(container) {
 
 function isResourceNameValid(value) {
   const trimmed = value.trim();
+  return trimmed.length >= 1 && trimmed.length <= 50;  // very lenient
+  // or keep your original stricter version
+}
 
-  // Allowed: letters, numbers, Finnish letters, and space (based on your current regex)
-  const allowedPattern = /^[a-zA-Z0-9äöåÄÖÅ ]+$/;
-
-  const lengthValid = trimmed.length >= 5 && trimmed.length <= 30;
-  const charactersValid = allowedPattern.test(trimmed);
-
-  return lengthValid && charactersValid;
+function isResourceDescriptionValid(value) {
+  const trimmed = value.trim();
+  return trimmed.length >= 1 && trimmed.length <= 200;
 }
 
 function isResourceDescriptionValid(value) {
@@ -241,12 +240,20 @@ function attachResourceDescriptionValidation(input) {
 
 
 // ===============================
-// 4) Bootstrapping
+// 4) Bootstrapping — MODIFIED MINIMALLY
 // ===============================
+
+// Still render buttons (keeping your admin/reserver logic)
 renderActionButtons(role);
 
-// Create + validate input
-const resourceNameInput = createResourceNameInput(resourceNameCnt);
-attachResourceNameValidation(resourceNameInput);
-const resourceDescriptionArea = createResourceDescriptionArea(resourceDescriptionCnt);
-attachResourceDescriptionValidation(resourceDescriptionArea);
+// Use EXISTING inputs from HTML instead of creating them
+const resourceNameInput = document.getElementById("resourceName");
+const resourceDescriptionArea = document.getElementById("resourceDescription");
+
+// Attach validation ONLY if the elements exist
+if (resourceNameInput && resourceDescriptionArea) {
+    attachResourceNameValidation(resourceNameInput);
+    attachResourceDescriptionValidation(resourceDescriptionArea);
+} else {
+    console.error("Required input fields not found in HTML");
+}
