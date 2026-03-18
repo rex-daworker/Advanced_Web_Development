@@ -1,6 +1,7 @@
 // ===============================
 // Form handling for resources page
 // ===============================
+import { isValidText } from './form.js';
 
 // -------------- Helpers --------------
 function $(id) {
@@ -248,10 +249,10 @@ const resourceDescriptionArea = document.getElementById("resourceDescription");
 
 // Attach validation ONLY if the elements exist
 if (resourceNameInput && resourceDescriptionArea) {
-    attachResourceNameValidation(resourceNameInput);
-    attachResourceDescriptionValidation(resourceDescriptionArea);
+  attachResourceNameValidation(resourceNameInput);
+  attachResourceDescriptionValidation(resourceDescriptionArea);
 } else {
-    console.error("Required input fields not found in HTML");
+  console.error("Required input fields not found in HTML");
 }
 
 // -------------- Form wiring --------------
@@ -272,9 +273,9 @@ async function onSubmit(event) {
   const nameTrimmed = nameRaw.trim();
   const descTrimmed = descRaw.trim();
 
-  if (nameTrimmed === "" || descTrimmed === "") {
+  if (!isValidText(nameRaw) || !isValidText(descRaw)) {   // ← using imported function
     alert("Name and description are required.");
-    return; // prevent sending bad data
+    return;
   }
   // ────────────────────────────────────────────────
 
@@ -316,7 +317,7 @@ async function onSubmit(event) {
     msg += "--------------------------\n";
     msg += "Status ➡️ " + response.status + "\n";
     msg += "Action ➡️ " + data.echo.action + "\n";
-    msg += "Name ➡️ "+ data.echo.resourceName + "\n";
+    msg += "Name ➡️ " + data.echo.resourceName + "\n";
     msg += "Description ➡️ " + data.echo.resourceDescription + "\n";
     msg += "Availability ➡️ " + data.echo.resourceAvailable + "\n";
     msg += "Price unit ➡️ " + data.echo.resourcePriceUnit + "\n";

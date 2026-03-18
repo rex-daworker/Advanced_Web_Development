@@ -26,4 +26,9 @@ nameInput.addEventListener("input", validateForm);
 descInput.addEventListener("input", validateForm);
 
 // Export validation for resources.js
-export { isValidText };
+// form.js
+export function isValidText(value) {
+    const trimmed = value.trim();
+    return trimmed.length >= 1;           // minimal requirement
+    // You can make it stricter later: length >= 3 && !/^\s+$/.test(value) etc.
+}
