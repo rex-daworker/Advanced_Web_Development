@@ -43,7 +43,7 @@ const resourceValidators = [
     .isString().withMessage('resourceName must be a string')
     .trim()
     .isLength({ min: 5, max: 30 }).withMessage('resourceName must be 5–30 characters')
-    .matches(/^[a-zA-Z0-9åäöÅÄÖ\s.,!?'-]+$/i)
+   .matches(/^[a-zA-Z0-9åäöÅÄÖ ]+$/)
     .withMessage('resourceName can only contain letters (incl. åäö), numbers, spaces and . , ! ? - \''),
 
   body('resourceDescription')
@@ -51,7 +51,7 @@ const resourceValidators = [
     .isString().withMessage('resourceDescription must be a string')
     .trim()
     .isLength({ min: 10, max: 50 }).withMessage('resourceDescription must be 10–50 characters')
-    .matches(/^[a-zA-Z0-9åäöÅÄÖ\s.,!?'-]+$/i)
+    .matches(/^[a-zA-Z0-9åäöÅÄÖ ]+$/)
     .withMessage('resourceDescription can only contain letters (incl. åäö), numbers, spaces and . , ! ? - \''),
 
   body('resourceAvailable')
