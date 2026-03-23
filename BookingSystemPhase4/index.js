@@ -1,7 +1,7 @@
 require("dotenv").config();
 const express = require("express");
 const app = express();
-const PORT = process.env.IPORT || 5000;
+const PORT = process.env.PORT || 5000;        // ← Fixed: was IPORT
 const path = require('path');
 const { Pool } = require('pg');
 const { body, validationResult } = require('express-validator');
@@ -13,9 +13,9 @@ function timestamp() {
 }
 
 // --- Middleware ---
-app.use(express.json()); // Parse application/json
+app.use(express.json());
 
-// Serve static files from ./public
+// Serve static files
 const publicDir = path.join(__dirname, "public");
 app.use(express.static(publicDir));
 
@@ -31,7 +31,7 @@ app.get('/resources', (req, res) => {
 // --- Database connection ---
 const pool = new Pool({});
 
-// --- Validation rules ---
+// --- FIXED Validation Rules (this is the key part) ---
 const resourceValidators = [
   body('action')
     .exists({ checkFalsy: true }).withMessage('action is required')
@@ -42,14 +42,17 @@ const resourceValidators = [
     .exists({ checkFalsy: true }).withMessage('resourceName is required')
     .isString().withMessage('resourceName must be a string')
     .trim()
-    .escape()
-    .isLength({ min: 5, max: 30 }).withMessage('resourceName must be 5–30 characters'),
+    .isLength({ min: 5, max: 30 }).withMessage('resourceName must be 5–30 characters')
+    .matches(/^[a-zA-Z0-9åäöÅÄÖ\s.,!?'-]+$/i)
+    .withMessage('resourceName can only contain letters (incl. åäö), numbers, spaces and . , ! ? - \''),
 
   body('resourceDescription')
     .exists({ checkFalsy: true }).withMessage('resourceDescription is required')
     .isString().withMessage('resourceDescription must be a string')
     .trim()
-    .isLength({ min: 10, max: 50 }).withMessage('resourceDescription must be 10–50 characters'),
+    .isLength({ min: 10, max: 50 }).withMessage('resourceDescription must be 10–50 characters')
+    .matches(/^[a-zA-Z0-9åäöÅÄÖ\s.,!?'-]+$/i)
+    .withMessage('resourceDescription can only contain letters (incl. åäö), numbers, spaces and . , ! ? - \''),
 
   body('resourceAvailable')
     .exists({ checkFalsy: true }).withMessage('resourceAvailable is required')
@@ -79,7 +82,6 @@ app.post('/api/resources', resourceValidators, async (req, res) => {
     });
   }
 
-  // Extract validated & coerced values
   let {
     action,
     resourceName,
@@ -89,40 +91,33 @@ app.post('/api/resources', resourceValidators, async (req, res) => {
     resourcePriceUnit
   } = req.body;
 
-  // Sanitize inputs to prevent XSS / dangerous content
-  const cleanName = resourceName.trim()
+  // Clean & safe HTML escaping
+  const escapeHtml = (str) => str
     .replace(/&/g, '&amp;')
     .replace(/</g, '&lt;')
     .replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;')
     .replace(/'/g, '&#39;');
 
-  let cleanDescription = resourceDescription.trim()
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#39;');
+  const cleanName = escapeHtml(resourceName.trim());
+  const cleanDescription = escapeHtml(resourceDescription.trim());
 
-  // Extra protection: reject if it still looks like a script tag after escaping
-  if (cleanDescription.includes('<script') || cleanDescription.includes('alert(')) {
+  // Final safety net (optional but good)
+  if (cleanDescription.toLowerCase().includes('<script') || 
+      cleanDescription.toLowerCase().includes('alert(')) {
     return res.status(400).json({
       ok: false,
       error: "Invalid description",
-      details: "Description contains disallowed content (scripts or executable code)."
+      details: "Description contains disallowed content."
     });
   }
 
-  // Optional logging
   console.log(`[${timestamp()}] POST /api/resources`);
-  console.log('------------------------------');
-  console.log('Action       ➡️', action);
-  console.log('Name         ➡️', cleanName);
-  console.log('Description  ➡️', cleanDescription);
-  console.log('Available    ➡️', resourceAvailable);
-  console.log('Price        ➡️', resourcePrice);
-  console.log('Unit         ➡️', resourcePriceUnit);
-  console.log('------------------------------');
+  console.log('Name        ➡️', cleanName);
+  console.log('Description ➡️', cleanDescription);
+  console.log('Available   ➡️', resourceAvailable);
+  console.log('Price       ➡️', resourcePrice);
+  console.log('Unit        ➡️', resourcePriceUnit);
 
   if (action !== 'create') {
     return res.status(400).json({ ok: false, error: 'Only create is implemented right now' });
@@ -151,11 +146,11 @@ app.post('/api/resources', resourceValidators, async (req, res) => {
     return res.status(201).json({ ok: true, data: created });
 
   } catch (err) {
-    if (err.code === '23505') { // PostgreSQL unique violation (duplicate name)
+    if (err.code === '23505') {
       return res.status(409).json({
         ok: false,
         error: "Duplicate resource name",
-        details: `A resource named "${resourceName}" already exists. Please choose a different name.`
+        details: `A resource named "${resourceName}" already exists.`
       });
     }
 

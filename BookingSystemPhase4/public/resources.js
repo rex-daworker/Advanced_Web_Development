@@ -249,4 +249,4 @@ renderActionButtons(role);
 const resourceNameInput = createResourceNameInput(resourceNameCnt);
 attachResourceNameValidation(resourceNameInput);
 const resourceDescriptionArea = createResourceDescriptionArea(resourceDescriptionCnt);
-attachResourceDescriptionValidation(resourceDescriptionArea);
+attachResourceDescriptionValidation(resourceDescriptionArea); 
