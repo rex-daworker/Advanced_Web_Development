@@ -1,37 +1,27 @@
 require("dotenv").config();
 const express = require("express");
 const app = express();
-const PORT = process.env.PORT || 5000;        // ← Fixed: was IPORT
+const PORT = process.env.PORT || 5000;
 const path = require('path');
 const { Pool } = require('pg');
 const { body, validationResult } = require('express-validator');
 
-// Timestamp helper
 function timestamp() {
   const now = new Date();
   return now.toISOString().replace('T', ' ').replace('Z', '');
 }
 
-// --- Middleware ---
 app.use(express.json());
 
-// Serve static files
 const publicDir = path.join(__dirname, "public");
 app.use(express.static(publicDir));
 
-// --- Routes (HTML pages) ---
-app.get("/", (req, res) => {
-  res.sendFile(path.join(publicDir, "index.html"));
-});
+app.get("/", (req, res) => res.sendFile(path.join(publicDir, "index.html")));
+app.get('/resources', (req, res) => res.sendFile(path.join(publicDir, 'resources.html')));
 
-app.get('/resources', (req, res) => {
-  res.sendFile(path.join(publicDir, 'resources.html'));
-});
-
-// --- Database connection ---
 const pool = new Pool({});
 
-// --- FIXED Validation Rules (this is the key part) ---
+// STRICT VALIDATION — matching teacher's original intent
 const resourceValidators = [
   body('action')
     .exists({ checkFalsy: true }).withMessage('action is required')
@@ -43,16 +33,16 @@ const resourceValidators = [
     .isString().withMessage('resourceName must be a string')
     .trim()
     .isLength({ min: 5, max: 30 }).withMessage('resourceName must be 5–30 characters')
-   .matches(/^[a-zA-Z0-9åäöÅÄÖ ]+$/)
-    .withMessage('resourceName can only contain letters (incl. åäö), numbers, spaces and . , ! ? - \''),
+    .matches(/^[a-zA-Z0-9åäöÅÄÖ ]+$/i)
+    .withMessage('resourceName can only contain letters (incl. åäö), numbers and spaces'),
 
   body('resourceDescription')
     .exists({ checkFalsy: true }).withMessage('resourceDescription is required')
     .isString().withMessage('resourceDescription must be a string')
     .trim()
     .isLength({ min: 10, max: 50 }).withMessage('resourceDescription must be 10–50 characters')
-    .matches(/^[a-zA-Z0-9åäöÅÄÖ ]+$/)
-    .withMessage('resourceDescription can only contain letters (incl. åäö), numbers, spaces and . , ! ? - \''),
+    .matches(/^[a-zA-Z0-9åäöÅÄÖ ]+$/i)
+    .withMessage('resourceDescription can only contain letters (incl. åäö), numbers and spaces'),
 
   body('resourceAvailable')
     .exists({ checkFalsy: true }).withMessage('resourceAvailable is required')
@@ -72,7 +62,6 @@ const resourceValidators = [
     .withMessage("resourcePriceUnit must be 'hour', 'day', 'week', or 'month'"),
 ];
 
-// POST /api/resources - Create resource
 app.post('/api/resources', resourceValidators, async (req, res) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
@@ -82,19 +71,12 @@ app.post('/api/resources', resourceValidators, async (req, res) => {
     });
   }
 
-  let {
-    action,
-    resourceName,
-    resourceDescription,
-    resourceAvailable,
-    resourcePrice,
-    resourcePriceUnit
-  } = req.body;
+  let { action, resourceName, resourceDescription, resourceAvailable, resourcePrice, resourcePriceUnit } = req.body;
 
-  // Clean & safe HTML escaping
+  // Safe escaping to prevent XSS
   const escapeHtml = (str) => str
     .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
+    .replace(/</g, '&lt;')   
     .replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;')
     .replace(/'/g, '&#39;');
@@ -102,69 +84,32 @@ app.post('/api/resources', resourceValidators, async (req, res) => {
   const cleanName = escapeHtml(resourceName.trim());
   const cleanDescription = escapeHtml(resourceDescription.trim());
 
-  // Final safety net (optional but good)
-  if (cleanDescription.toLowerCase().includes('<script') || 
-      cleanDescription.toLowerCase().includes('alert(')) {
-    return res.status(400).json({
-      ok: false,
-      error: "Invalid description",
-      details: "Description contains disallowed content."
-    });
-  }
-
-  console.log(`[${timestamp()}] POST /api/resources`);
-  console.log('Name        ➡️', cleanName);
-  console.log('Description ➡️', cleanDescription);
-  console.log('Available   ➡️', resourceAvailable);
-  console.log('Price       ➡️', resourcePrice);
-  console.log('Unit        ➡️', resourcePriceUnit);
+  console.log(`[${timestamp()}] POST /api/resources - Name: ${cleanName}`);
 
   if (action !== 'create') {
     return res.status(400).json({ ok: false, error: 'Only create is implemented right now' });
   }
 
   try {
-    const insertSql = `
-      INSERT INTO resources (name, description, available, price, price_unit)
-      VALUES ($1, $2, $3, $4, $5)
-      RETURNING id, name, description, available, price, price_unit, created_at
-    `;
+    const { rows } = await pool.query(
+      `INSERT INTO resources (name, description, available, price, price_unit)
+       VALUES ($1, $2, $3, $4, $5)
+       RETURNING *`,
+      [cleanName, cleanDescription, Boolean(resourceAvailable), Number(resourcePrice), resourcePriceUnit]
+    );
 
-    const params = [
-      cleanName,
-      cleanDescription,
-      Boolean(resourceAvailable),
-      Number(resourcePrice),
-      resourcePriceUnit
-    ];
-
-    const { rows } = await pool.query(insertSql, params);
-    const created = rows[0];
-
-    console.log(`[${timestamp()}] Resource created: "${created.name}" (ID: ${created.id})`);
-
-    return res.status(201).json({ ok: true, data: created });
+    console.log(`[${timestamp()}] Resource created ID ${rows[0].id}`);
+    return res.status(201).json({ ok: true, data: rows[0] });
 
   } catch (err) {
     if (err.code === '23505') {
-      return res.status(409).json({
-        ok: false,
-        error: "Duplicate resource name",
-        details: `A resource named "${resourceName}" already exists.`
-      });
+      return res.status(409).json({ ok: false, error: "Duplicate resource name" });
     }
-
-    console.error('DB insert failed:', err.message);
+    console.error(err);
     return res.status(500).json({ ok: false, error: 'Database error' });
   }
 });
 
-// 404 for unknown API routes
-app.use('/api', (req, res) => {
-  res.status(404).json({ error: 'Not found' });
-});
+app.use('/api', (req, res) => res.status(404).json({ error: 'Not found' }));
 
-// Start server 
-app.listen(PORT, () => {
-  console.log(`Server listening on http://localhost:${PORT}`);
-});
+app.listen(PORT, () => console.log(`Server running on http://localhost:${PORT}`));
