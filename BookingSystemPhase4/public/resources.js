@@ -250,3 +250,75 @@ const resourceNameInput = createResourceNameInput(resourceNameCnt);
 attachResourceNameValidation(resourceNameInput);
 const resourceDescriptionArea = createResourceDescriptionArea(resourceDescriptionCnt);
 attachResourceDescriptionValidation(resourceDescriptionArea); 
+
+// =============================================
+// FORM SUBMISSION - This was missing!
+// =============================================
+if (createButton) {
+  createButton.addEventListener("click", async (e) => {
+    e.preventDefault();
+
+    // Prevent accidental double-clicks
+    if (createButton.disabled) return;
+
+    // Lock button immediately
+    setButtonEnabled(createButton, false);
+    createButton.textContent = "Creating...";
+
+    // Build payload cleanly
+    const resourceName = document.getElementById("resourceName")?.value.trim() || "";
+    const resourceDescription = document.getElementById("resourceDescription")?.value.trim() || "";
+    const resourceAvailable = document.getElementById("resourceAvailable")?.checked ?? true;
+    const resourcePrice = parseFloat(document.querySelector('input[type="number"]')?.value || "0");
+    const resourcePriceUnit = document.querySelector('input[name="priceUnit"]:checked')?.value || "day";
+
+    const payload = {
+      action: "create",
+      resourceName,
+      resourceDescription,
+      resourceAvailable,
+      resourcePrice,
+      resourcePriceUnit
+    };
+
+    try {
+      const response = await fetch("/api/resources", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload)
+      });
+
+      const result = await response.json();
+
+      if (response.ok) {
+        alert(
+          `✅ Created successfully!\n` +
+          `Name: ${result.data.name}\n` +
+          `ID: ${result.data.id}`
+        );
+
+        // Reset form
+        document.getElementById("resourceName").value = "";
+        document.getElementById("resourceDescription").value = "";
+
+        resourceNameValid = false;
+        resourceDescriptionValid = false;
+        setButtonEnabled(createButton, false);
+
+      } else {
+        // Backend validation errors
+        const msg = result.error || JSON.stringify(result.errors || result);
+        alert("❌ Error: " + msg);
+      }
+
+    } catch (err) {
+      console.error("Network error:", err);
+      alert("❌ Connection error — server unreachable");
+
+    } finally {
+      // Restore button
+      createButton.textContent = "Create";
+      setButtonEnabled(createButton, resourceNameValid && resourceDescriptionValid);
+    }
+  });
+}
