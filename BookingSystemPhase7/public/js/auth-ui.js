@@ -26,7 +26,7 @@ export function getUserRole() {
 export function updateAuthLinks() {
   const token = localStorage.getItem("token");
   const authLinks = document.querySelectorAll(".auth-link");
-
+ 
   authLinks.forEach((link) => {
     if (token) {
       if (link.dataset.auth === "guest") link.classList.add("hidden");

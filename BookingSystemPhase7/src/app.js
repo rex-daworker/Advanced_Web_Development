@@ -26,6 +26,12 @@ app.use(express.json()); // Parse application/json
 
 // Serve everything in ./public as static assets
 const publicDir = path.join(__dirname, "..", "public");
+const authMiddleware = require("./middleware/auth.middleware");
+
+app.get("/reservations", authMiddleware, (req, res) => {
+  res.sendFile(path.join(__dirname, "src/views/reservations.html"));
+});
+
 app.use(express.static(publicDir));
 
 // --- Views (HTML pages) ---
