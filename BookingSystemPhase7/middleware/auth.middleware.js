@@ -1,16 +1,27 @@
 import jwt from "jsonwebtoken";
 
-export function requireAuth(req, res, next) {
+function getTokenFromRequest(req) {
   const authHeader = req.headers.authorization;
-
-  if (!authHeader || !authHeader.startsWith("Bearer ")) {
-    return res.status(401).json({
-      ok: false,
-      error: "Authentication required",
-    });
+  if (authHeader && authHeader.startsWith("Bearer ")) {
+    return authHeader.substring(7);
   }
 
-  const token = authHeader.substring(7);
+  const cookieHeader = req.headers.cookie;
+  if (!cookieHeader) return null;
+
+  const match = cookieHeader.match(/(?:^|; )token=([^;]+)/);
+  return match ? decodeURIComponent(match[1]) : null;
+}
+
+export function requireAuth(req, res, next) {
+  const token = getTokenFromRequest(req);
+
+  if (!token) {
+    if (req.accepts("html")) {
+      return res.redirect("/login");
+    }
+    return res.status(401).json({ ok: false, error: "Authentication required" });
+  }
 
   try {
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
@@ -25,10 +36,10 @@ export function requireAuth(req, res, next) {
 
     next();
   } catch (err) {
-    return res.status(401).json({
-      ok: false,
-      error: "Invalid or expired token",
-    });
+    if (req.accepts("html")) {
+      return res.redirect("/login");
+    }
+    return res.status(401).json({ ok: false, error: "Invalid or expired token" });
   }
 }
 

@@ -46,15 +46,14 @@ function addButton({ label, type = "button", value, classes = "" }) {
 
 function renderActionButtons(currentRole) {
     actions.innerHTML = "";
-    if (currentRole === "manager" && formMode === "create") {
-        const createBtn = addButton({ label: "Create", type: "submit", value: "create", classes: BUTTON_ENABLED_CLASSES });
+    if (formMode === "create") {
+        addButton({ label: "Create", type: "submit", value: "create", classes: BUTTON_ENABLED_CLASSES });
         const clearBtn = addButton({ label: "Clear", type: "button", classes: BUTTON_ENABLED_CLASSES });
         clearBtn.addEventListener("click", clearReservationForm);
     }
-    if (currentRole === "manager" && formMode === "edit") {
+    if (formMode === "edit") {
         addButton({ label: "Update", type: "submit", value: "update", classes: BUTTON_ENABLED_CLASSES });
-        const deleteBtn = addButton({ label: "Delete", type: "submit", value: "delete", classes: BUTTON_ENABLED_CLASSES });
-        deleteBtn.addEventListener("click", handleDelete);
+        addButton({ label: "Delete", type: "submit", value: "delete", classes: BUTTON_ENABLED_CLASSES });
     }
 }
 
@@ -124,46 +123,72 @@ renderActionButtons(role);
 document.getElementById("reservationForm").addEventListener("submit", async (e) => {
     e.preventDefault();
 
+    const action = e.submitter?.value || (formMode === "edit" ? "update" : "create");
+    const reservationId = reservationIdInput.value;
     const data = {
-        resourceId: resourceIdInput.value,
-        userId: userIdInput.value,
+        resourceId: Number(resourceIdInput.value),
+        userId: Number(userIdInput.value),
         startTime: startTimeInput.value,
         endTime: endTimeInput.value,
         note: noteInput.value || null,
-        status: statusSelect.value
+        status: statusSelect.value,
     };
 
-    const url = formMode === "edit" 
-        ? `/api/reservations/${reservationIdInput.value}` 
-        : "/api/reservations";
+    let url = "/api/reservations";
+    let method = "POST";
+    let body = JSON.stringify(data);
 
-    const method = formMode === "edit" ? "PUT" : "POST";
+    if (action === "update") {
+        if (!reservationId) {
+            showFormMessage("Please select a reservation before updating", "red");
+            return;
+        }
+        url = `/api/reservations/${reservationId}`;
+        method = "PUT";
+    } else if (action === "delete") {
+        if (!reservationId) {
+            showFormMessage("Please select a reservation before deleting", "red");
+            return;
+        }
+        url = `/api/reservations/${reservationId}`;
+        method = "DELETE";
+        body = null;
+    }
 
     try {
         const res = await fetch(url, {
             method,
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(data)
+            headers: body ? { "Content-Type": "application/json" } : undefined,
+            body,
         });
+
+        if (res.status === 204) {
+            showFormMessage("Reservation deleted successfully", "green");
+            clearReservationForm();
+            await loadReservations();
+            return;
+        }
 
         const result = await res.json();
 
-        if (result.ok) {
-            showFormMessage(formMode === "edit" ? "Reservation updated successfully" : "Reservation created successfully", "green");
-            clearReservationForm();
-            await loadReservations();
-        } else {
+        if (!res.ok) {
             showFormMessage(result.error || "Operation failed", "red");
+            return;
         }
+
+        if (action === "create") {
+            showFormMessage("Reservation created successfully", "green");
+        } else if (action === "update") {
+            showFormMessage("Reservation updated successfully", "green");
+        }
+
+        clearReservationForm();
+        await loadReservations();
     } catch (err) {
-        showFormMessage("Network error", "red");
+        console.error(err);
+        showFormMessage("Network error: Could not reach server", "red");
     }
 });
-
-function handleDelete() {
-    if (!confirm("Delete this reservation?")) return;
-    // You can implement DELETE here if needed, or let form.js handle it via onResourceActionSuccess pattern
-}
 
 // Clear form
 function clearReservationForm() {

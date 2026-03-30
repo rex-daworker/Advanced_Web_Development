@@ -3,6 +3,7 @@ import express from "express";
 import resourcesRouter from "./routes/resources.routes.js";
 import reservationsRouter from "./routes/reservations.routes.js";
 import authRoutes from "./routes/auth.routes.js";
+import { requireAuth } from "../middleware/auth.middleware.js";
 import path from "path";
 import { fileURLToPath } from "url";
 
@@ -33,12 +34,12 @@ app.get("/", (req, res) => {
   res.sendFile(path.join(publicDir, "index.html"));
 });
 
-app.get("/resources", (req, res) => {
-  res.sendFile(path.join(__dirname, 'views/resources.html'));
+app.get("/resources", requireAuth, (req, res) => {
+  res.sendFile(path.join(__dirname, "views/resources.html"));
 });
 
-app.get("/reservations", (req, res) => {
-  res.sendFile(path.join(__dirname, 'views/reservations.html'));
+app.get("/reservations", requireAuth, (req, res) => {
+  res.sendFile(path.join(__dirname, "views/reservations.html"));
 });
 
 app.get("/login", (req, res) => {
