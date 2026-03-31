@@ -125,11 +125,25 @@ document.getElementById("reservationForm").addEventListener("submit", async (e) 
 
     const action = e.submitter?.value || (formMode === "edit" ? "update" : "create");
     const reservationId = reservationIdInput.value;
+    
+    // Convert datetime inputs to ISO 8601 with timezone
+    const startTimeValue = startTimeInput.value;
+    const endTimeValue = endTimeInput.value;
+    
+    if (!startTimeValue || !endTimeValue) {
+        showFormMessage("Please fill in both start and end times", "red");
+        return;
+    }
+    
+    // Parse datetime and add UTC timezone
+    const startDate = new Date(startTimeValue + 'Z');
+    const endDate = new Date(endTimeValue + 'Z');
+    
     const data = {
         resourceId: Number(resourceIdInput.value),
         userId: Number(userIdInput.value),
-        startTime: startTimeInput.value,
-        endTime: endTimeInput.value,
+        startTime: startDate.toISOString(),
+        endTime: endDate.toISOString(),
         note: noteInput.value || null,
         status: statusSelect.value,
     };

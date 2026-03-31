@@ -21,6 +21,32 @@ router.post("/", async (req, res) => {
     status
   } = req.body;
 
+  // Validate required fields
+  if (!resourceId || !userId || !startTime || !endTime) {
+    return res.status(400).json({ 
+      ok: false, 
+      error: "Missing required fields: resourceId, userId, startTime, endTime" 
+    });
+  }
+
+  // Validate dates
+  const start = new Date(startTime);
+  const end = new Date(endTime);
+  
+  if (isNaN(start.getTime()) || isNaN(end.getTime())) {
+    return res.status(400).json({ 
+      ok: false, 
+      error: "Invalid date format for startTime or endTime" 
+    });
+  }
+
+  if (end <= start) {
+    return res.status(400).json({ 
+      ok: false, 
+      error: "End time must be after start time" 
+    });
+  }
+
   try {
     const insertSql = `
       INSERT INTO reservations
@@ -51,8 +77,17 @@ router.post("/", async (req, res) => {
     return res.status(201).json({ ok: true, data: rows[0] });
 
   } catch (err) {
-    console.error("DB insert failed:", err);
-    return res.status(500).json({ ok: false, error: "Database error" });
+    console.error("DB insert failed:", err.message);
+    
+    // Check for specific constraint violations
+    if (err.message.includes("fk_reservations_resource")) {
+      return res.status(400).json({ ok: false, error: "Resource not found" });
+    }
+    if (err.message.includes("fk_reservations_user")) {
+      return res.status(400).json({ ok: false, error: "User not found" });
+    }
+    
+    return res.status(500).json({ ok: false, error: "Database error: " + err.message });
   }
 });
 
