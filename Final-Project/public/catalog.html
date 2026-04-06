@@ -1,0 +1,136 @@
+<!--
+    Author: Rex Odomero Oghenerobo
+    Date: 2025-12-12
+-->
+
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>EcoRide Task-L | Catalog</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+
+<body class="font-sans text-gray-800">
+
+  <!-- HEADER -->
+  <header id="header" class="bg-white shadow-md fixed top-0 left-0 w-full z-20">
+    <div class="max-w-6xl mx-auto flex justify-between items-center p-4">
+      <h1 class="text-2xl font-bold text-green-600">EcoRide</h1>
+      <nav class="hidden md:flex space-x-6 items-center">
+        <a href="/index.html" class="hover:text-green-600">Home</a>
+        <a href="/catalog.html" class="hover:text-green-600">Catalog</a>
+        <a href="/locations.html" class="hover:text-green-600">Locations</a>
+        <a href="/signup.html" id="headerAuthLink" class="hover:text-green-600">Sign Up</a>
+      </nav>
+      <button id="logoutBtn" class="bg-red-600 text-white px-4 py-2 rounded hidden hover:bg-red-700 transition">
+        Logout
+      </button>
+    </div>
+  </header>
+
+  <!-- MAIN -->
+  <main class="mt-20">
+    <!-- INTRO -->
+    <section class="text-center py-12 px-6">
+      <h2 class="text-3xl font-bold mb-4">Our Rental Catalog</h2>
+      <p class="text-lg text-gray-600">Explore our range of modern e‑bikes available for daily and weekly rentals.</p>
+    </section>
+
+    <!-- LOADING -->
+    <div id="loading" class="flex justify-center py-12">
+      <p class="text-lg text-gray-600">Loading bikes...</p>
+    </div>
+
+    <!-- PRODUCT GRID -->
+    <section id="bikesGrid" class="max-w-6xl mx-auto px-6 py-12 grid md:grid-cols-3 gap-8">
+      <!-- Bikes will be loaded here by JavaScript -->
+    </section>
+
+    <!-- ERROR MESSAGE -->
+    <div id="errorMsg" class="max-w-6xl mx-auto px-6 py-12 text-center text-red-600 hidden">
+      Failed to load bikes. Please try again later.
+    </div>
+  </main>
+
+  <!-- FOOTER -->
+  <footer class="bg-gray-900 text-gray-300 py-10">
+    <div class="max-w-6xl mx-auto text-center">
+      <p class="text-sm">&copy; 2025 EcoRide. All rights reserved.</p>
+    </div>
+  </footer>
+
+  <script>
+    async function checkAuth() {
+      const token = localStorage.getItem('token');
+      const headerAuthLink = document.getElementById('headerAuthLink');
+      const logoutBtn = document.getElementById('logoutBtn');
+      headerAuthLink.href = '/signup.html';
+      headerAuthLink.textContent = 'Sign Up';
+
+      if (token) {
+        try {
+          const response = await fetch('/api/auth/me', {
+            headers: { 'Authorization': `Bearer ${token}` }
+          });
+          if (response.ok) {
+            headerAuthLink.textContent = 'Dashboard';
+            headerAuthLink.href = '/dashboard';
+            logoutBtn.classList.remove('hidden');
+          }
+        } catch (err) {
+          console.error('Auth check failed:', err);
+        }
+      }
+    }
+
+    async function loadBikes() {
+      const loading = document.getElementById('loading');
+      const bikesGrid = document.getElementById('bikesGrid');
+      const errorMsg = document.getElementById('errorMsg');
+
+      try {
+        const response = await fetch('/api/bikes');
+        if (!response.ok) throw new Error('Failed to fetch bikes');
+
+        const data = await response.json();
+        loading.classList.add('hidden');
+
+        if (data.bikes.length === 0) {
+          bikesGrid.innerHTML = '<p class="col-span-3 text-center text-gray-500">No bikes available</p>';
+          return;
+        }
+
+        bikesGrid.innerHTML = data.bikes.map(bike => `
+          <div class="bg-white rounded-lg shadow p-4 text-center hover:shadow-lg transition">
+            <img src="${bike.image_url || 'images/primeebike-header2.png'}" alt="${bike.name}" 
+                 class="w-full h-48 object-cover rounded mb-4" loading="lazy">
+            <h3 class="text-xl font-semibold">${bike.name}</h3>
+            <p class="text-gray-600 text-sm">${bike.description || 'Premium e-bike rental'}</p>
+            <p class="font-bold text-green-700 mt-2">€${bike.price_per_day}/day · €${bike.price_per_week}/week</p>
+            <p class="text-sm text-gray-500 mt-1">Available: ${bike.available_units}/${bike.total_units}</p>
+            <a href="/order.html?bike=${bike.id}" 
+               class="mt-4 inline-block bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 transition">
+              Order Now
+            </a>
+          </div>
+        `).join('');
+      } catch (err) {
+        console.error('Error loading bikes:', err);
+        loading.classList.add('hidden');
+        errorMsg.classList.remove('hidden');
+      }
+    }
+
+    document.getElementById('logoutBtn').addEventListener('click', () => {
+      localStorage.removeItem('token');
+      location.reload();
+    });
+
+    checkAuth();
+    loadBikes();
+  </script>
+</body>
+</html>

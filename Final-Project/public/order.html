@@ -1,0 +1,255 @@
+<!--
+    Author: Rex Odomero Oghenerobo
+    Date: 2025-12-12
+-->
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>EcoRide Task-L | Order</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="font-sans text-gray-800">
+
+  <!-- HEADER -->
+  <header id="header" class="bg-white shadow-md fixed top-0 left-0 w-full z-20">
+    <div class="max-w-6xl mx-auto flex justify-between items-center p-4">
+      <a href="/index.html"><h1 class="text-2xl font-bold text-green-600">EcoRide</h1></a>
+      <nav class="hidden md:flex space-x-6 items-center">
+        <a href="/index.html" class="hover:text-green-600">Home</a>
+        <a href="/catalog.html" class="hover:text-green-600">Catalog</a>
+        <a href="/locations.html" class="hover:text-green-600">Locations</a>
+        <a href="/signup.html" id="headerAuthLink" class="hover:text-green-600">Sign Up</a>
+        <a href="/login.html" class="hover:text-green-600">Log In</a>
+      </nav>
+      <button id="logoutBtn" class="bg-red-600 text-white px-4 py-2 rounded hidden hover:bg-red-700 transition">
+        Logout
+      </button>
+    </div>
+  </header>
+
+  <!-- MAIN -->
+  <main class="mt-20 min-h-screen flex items-center justify-center bg-gray-50 p-6">
+    <div class="bg-white rounded-xl shadow-2xl w-full max-w-2xl p-8">
+      <h2 class="text-3xl font-bold text-green-700 mb-6">Place Your Order</h2>
+
+      <!-- Error/Success Messages -->
+      <div id="messageBox"></div>
+
+      <form id="orderForm" class="space-y-6">
+        <!-- Bike Selection -->
+        <div>
+          <label for="bike-select" class="block text-sm font-medium text-gray-700 mb-2">Select Bike</label>
+          <select id="bike-select" name="bikeId" required 
+                  class="w-full border rounded-lg px-3 py-2 focus:ring-green-500 focus:border-green-500">
+            <option value="">Loading bikes...</option>
+          </select>
+        </div>
+
+        <!-- Bike Details -->
+        <div id="bikeDetails" class="hidden p-4 bg-gray-50 rounded-lg">
+          <p class="text-sm"><strong>Price per day:</strong> <span id="pricePerDay">-</span></p>
+          <p class="text-sm"><strong>Price per week:</strong> <span id="pricePerWeek">-</span></p>
+        </div>
+
+        <!-- Quantity -->
+        <div>
+          <label for="quantity" class="block text-sm font-medium text-gray-700 mb-2">Quantity</label>
+          <input type="number" id="quantity" name="quantity" value="1" min="1" max="10" required 
+                 class="w-full border rounded-lg px-3 py-2 focus:ring-green-500 focus:border-green-500">
+        </div>
+
+        <!-- Rental Start Date -->
+        <div>
+          <label for="startDate" class="block text-sm font-medium text-gray-700 mb-2">Rental Start Date</label>
+          <input type="date" id="startDate" name="startDate" required 
+                 class="w-full border rounded-lg px-3 py-2 focus:ring-green-500 focus:border-green-500">
+        </div>
+
+        <!-- Rental Duration -->
+        <div>
+          <label for="duration" class="block text-sm font-medium text-gray-700 mb-2">Rental Duration (days)</label>
+          <input type="number" id="duration" name="duration" value="1" min="1" max="365" required 
+                 class="w-full border rounded-lg px-3 py-2 focus:ring-green-500 focus:border-green-500">
+        </div>
+
+        <!-- Special Requests -->
+        <div>
+          <label for="specialRequests" class="block text-sm font-medium text-gray-700 mb-2">Special Requests (Optional)</label>
+          <textarea id="specialRequests" name="specialRequests" rows="3" 
+                    class="w-full border rounded-lg px-3 py-2 focus:ring-green-500 focus:border-green-500"
+                    placeholder="e.g., need a helmet, bike lock, etc."></textarea>
+        </div>
+
+        <!-- Total Price -->
+        <div class="p-4 bg-green-50 rounded-lg border border-green-200">
+          <p class="text-lg font-bold text-green-700">
+            Total Price: <span id="totalPrice">€0.00</span>
+          </p>
+        </div>
+
+        <!-- Submit -->
+        <button type="submit" class="w-full bg-green-600 text-white py-3 rounded-lg font-semibold hover:bg-green-700 transition">
+          Place Order
+        </button>
+
+        <a href="/catalog.html" class="block text-center text-gray-600 hover:text-gray-800">← Back to Catalog</a>
+      </form>
+    </div>
+  </main>
+
+  <!-- FOOTER -->
+  <footer class="bg-gray-900 text-gray-300 py-10">
+    <div class="max-w-6xl mx-auto text-center">
+      <p class="text-sm">&copy; 2025 EcoRide. All rights reserved.</p>
+    </div>
+  </footer>
+
+  <script>
+    let bikes = [];
+    let selectedBike = null;
+
+    async function checkAuth() {
+      const token = localStorage.getItem('token');
+      if (!token) {
+        window.location.href = '/login.html';
+        return;
+      }
+
+      const headerAuthLink = document.getElementById('headerAuthLink');
+      const logoutBtn = document.getElementById('logoutBtn');
+
+      try {
+        const response = await fetch('/api/auth/me', {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        if (response.ok) {
+          headerAuthLink.textContent = 'Dashboard';
+          headerAuthLink.href = '/dashboard';
+          logoutBtn.classList.remove('hidden');
+        }
+      } catch (err) {
+        console.error('Auth check failed:', err);
+      }
+    }
+
+    async function loadBikes() {
+      try {
+        const response = await fetch('/api/bikes');
+        const data = await response.json();
+        bikes = data.bikes;
+
+        const select = document.getElementById('bike-select');
+        select.innerHTML = '<option value="">Select a bike...</option>' +
+          bikes.map(b => `<option value="${b.id}">${b.name} (€${b.price_per_day}/day)</option>`).join('');
+      } catch (err) {
+        console.error('Error loading bikes:', err);
+      }
+    }
+
+    function getUrlParam(param) {
+      const params = new URLSearchParams(window.location.search);
+      return params.get(param);
+    }
+
+    function calculateTotal() {
+      if (!selectedBike) return;
+      const quantity = parseInt(document.getElementById('quantity').value) || 1;
+      const duration = parseInt(document.getElementById('duration').value) || 1;
+      const total = selectedBike.price_per_day * quantity * duration;
+      document.getElementById('totalPrice').textContent = `€${total.toFixed(2)}`;
+    }
+
+    // Set minimum date to today
+    const today = new Date().toISOString().split('T')[0];
+    document.getElementById('startDate').min = today;
+    document.getElementById('startDate').value = today;
+
+    // Event listeners
+    document.getElementById('bike-select').addEventListener('change', (e) => {
+      selectedBike = bikes.find(b => b.id == e.target.value) || null;
+      if (selectedBike) {
+        document.getElementById('bikeDetails').classList.remove('hidden');
+        document.getElementById('pricePerDay').textContent = `€${selectedBike.price_per_day}`;
+        document.getElementById('pricePerWeek').textContent = `€${selectedBike.price_per_week}`;
+      } else {
+        document.getElementById('bikeDetails').classList.add('hidden');
+      }
+      calculateTotal();
+    });
+
+    document.getElementById('quantity').addEventListener('change', calculateTotal);
+    document.getElementById('duration').addEventListener('change', calculateTotal);
+
+    document.getElementById('orderForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+
+      const bikeId = document.getElementById('bike-select').value;
+      const quantity = parseInt(document.getElementById('quantity').value);
+      const rentalStartDate = document.getElementById('startDate').value;
+      const rentalDurationDays = parseInt(document.getElementById('duration').value);
+      const specialRequests = document.getElementById('specialRequests').value;
+      const messageBox = document.getElementById('messageBox');
+      const token = localStorage.getItem('token');
+
+      if (!bikeId) {
+        messageBox.innerHTML = '<div class="p-4 bg-red-100 border border-red-400 text-red-700 rounded mb-4">Please select a bike</div>';
+        return;
+      }
+
+      try {
+        const response = await fetch('/api/orders', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify({
+            bikeId,
+            quantity,
+            rentalStartDate,
+            rentalDurationDays,
+            specialRequests
+          })
+        });
+
+        const data = await response.json();
+
+        if (!response.ok) {
+          messageBox.innerHTML = `<div class="p-4 bg-red-100 border border-red-400 text-red-700 rounded mb-4">${data.error}</div>`;
+          return;
+        }
+
+        messageBox.innerHTML = `<div class="p-4 bg-green-100 border border-green-400 text-green-700 rounded mb-4">Order placed successfully! Redirecting...</div>`;
+
+        setTimeout(() => {
+          window.location.href = '/success.html';
+        }, 2000);
+      } catch (err) {
+        console.error('Order error:', err);
+        messageBox.innerHTML = '<div class="p-4 bg-red-100 border border-red-400 text-red-700 rounded mb-4">Connection error. Please try again.</div>';
+      }
+    });
+
+    document.getElementById('logoutBtn').addEventListener('click', () => {
+      localStorage.removeItem('token');
+      location.reload();
+    });
+
+    // Initialize
+    checkAuth();
+    loadBikes();
+
+    // Pre-select bike if provided in URL
+    setTimeout(() => {
+      const bikeId = getUrlParam('bike');
+      if (bikeId) {
+        document.getElementById('bike-select').value = bikeId;
+        document.getElementById('bike-select').dispatchEvent(new Event('change'));
+      }
+    }, 500);
+  </script>
+</body>
+</html>

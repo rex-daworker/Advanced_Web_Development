@@ -1,0 +1,49 @@
+# BUILDING AND RUNNING: docker compose up -d --build
+# ONLY DATABASE: docker compose up -d --build database
+# LOGGING: docker logs ecoride-web -f
+# LOGGING: docker logs ecoride-db -f
+# CONNECTING TO CONTAINER: docker exec -it ecoride-web /bin/sh
+# CONNECTING TO CONTAINER: docker exec -it ecoride-db /bin/sh
+# CONNECTING TO DATABASE: docker exec -it ecoride-db psql -U ${PGUSER} -d ${PGDATABASE}
+# STOPPING WEB: docker stop ecoride-web
+# REMOVING: docker compose down --volumes
+
+name: ecoride-final-project
+services:
+  web:
+    build: .
+    image: ecoride
+    container_name: ecoride-web
+    environment:
+      PGHOST: database
+      PGPORT: ${PGPORT}
+      PGDATABASE: ${PGDATABASE}
+      PGUSER: ${PGUSER}
+      PGPASSWORD: ${PGPASSWORD}
+      IPORT: ${IPORT}
+      JWT_SECRET: ${JWT_SECRET}
+    ports:
+      - "${EPORT}:${IPORT}"
+    volumes:
+      - .:/usr/src/app
+      - /usr/src/app/node_modules
+    depends_on:
+      - database
+    restart: unless-stopped
+
+  database:
+    image: postgres:latest
+    container_name: ecoride-db
+    environment:
+      POSTGRES_USER: ${PGUSER}
+      POSTGRES_PASSWORD: ${PGPASSWORD}
+      POSTGRES_DB: ${PGDATABASE}
+    ports:
+      - "${EPGPORT}:${PGPORT}"
+    volumes:
+      - pgroot:/var/lib/postgresql
+      - ./db/init:/docker-entrypoint-initdb.d
+    restart: unless-stopped
+
+volumes:
+  pgroot: {}
