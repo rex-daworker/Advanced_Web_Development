@@ -1,8 +1,15 @@
+import Header from './components/Header';
+import Hero from './components/Hero';
+import MainContent from './components/MainContent';
+import Footer from './components/Footer';
+
 function App() {
   return (
-    <div>
-      <h1>Hello from React in Docker</h1>
-      <p>This is our first containerized React app.</p>
+    <div className="min-h-screen font-sans text-gray-800">
+      <Header />
+      <Hero />
+      <MainContent />
+      <Footer />
     </div>
   );
 }

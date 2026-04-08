@@ -9,10 +9,10 @@ export default function Footer() {
         <div>
           <h4 className="font-semibold mb-2 text-white">Quick Links</h4>
           <ul className="space-y-1">
-            <li><a href="#" className="hover:text-green-500">Home</a></li>
-            <li><a href="#" className="hover:text-green-500">Catalog</a></li>
-            <li><a href="#" className="hover:text-green-500">Sign Up</a></li>
-            <li><a href="#" className="hover:text-green-500">Log In</a></li>
+            <li><a href="#top" className="hover:text-green-500">Home</a></li>
+            <li><a href="#catalog" className="hover:text-green-500">Catalog</a></li>
+            <li><a href="#signup" className="hover:text-green-500">Sign Up</a></li>
+            <li><a href="#top" className="hover:text-green-500">Log In</a></li>
           </ul>
         </div>
         <div>
