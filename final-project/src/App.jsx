@@ -1,17 +1,8 @@
-import Header from './components/Header';
-import Hero from './components/Hero';
-import MainContent from './components/MainContent';
-import Footer from './components/Footer';
+import CatalogPage from "./pages/CatalogPage";
+import HomePage from "./pages/HomePage";
 
-function App() {
-  return (
-    <div className="min-h-screen font-sans text-gray-800">
-      <Header />
-      <Hero />
-      <MainContent />
-      <Footer />
-    </div>
-  );
-}
-
-export default App;
+<Routes>
+  <Route path="/" element={<HomePage />} />
+  <Route path="/catalog" element={<CatalogPage />} />
+  <Route path="/form" element={<FormPage />} />
+</Routes>
