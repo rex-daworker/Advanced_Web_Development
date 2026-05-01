@@ -37,6 +37,10 @@ function selectCustomer(c) {
   document.getElementById('email').value = c.email;
   document.getElementById('phone').value = c.phone;
   document.getElementById('birth_date').value = c.birth_date;
+
+  // SHOW update + delete buttons
+  document.getElementById('updateBtn').style.display = "inline-block";
+  document.getElementById('deleteBtn').style.display = "inline-block";
 }
 
 function getFormData() {
@@ -52,6 +56,10 @@ function getFormData() {
 function clearForm() {
   selectedCustomerId = null;
   document.getElementById('customerForm').reset();
+
+  // HIDE update + delete buttons
+  document.getElementById('updateBtn').style.display = "none";
+  document.getElementById('deleteBtn').style.display = "none";
 }
 
 document.getElementById('addBtn').onclick = async () => {
