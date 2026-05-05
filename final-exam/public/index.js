@@ -76,7 +76,7 @@ document.getElementById('addBtn').onclick = async () => {
     console.error('Error adding customer:', err);
   }
 };
-
+ 
 document.getElementById('updateBtn').onclick = async () => {
   if (!selectedCustomerId) return;
   const data = getFormData();
