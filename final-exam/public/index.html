@@ -16,7 +16,7 @@ Date: Thursday, 23 April 2026.
 </head>
 
 <body>
- 
+
     <header class="site-header">
         <div class="container header-grid">
             <section>
@@ -68,14 +68,18 @@ Date: Thursday, 23 April 2026.
                         <label for="phone">Phone</label>
                         <input id="phone" type="tel" />
 
+                        <!-- REPLACED BIRTH DATE FIELD -->
                         <label for="birth_date">Birth Date</label>
-                        <input type="date" id="birth_date" />
+                        <div style="display:flex; gap:10px;">
+                            <input type="date" id="birth_date" />
+                            <button type="button" id="confirmDateBtn">OK</button>
+                        </div>
 
-                        <!-- FIX: Only Add is visible initially -->
                         <button type="button" id="addBtn">Add Customer</button>
                         <button type="button" id="updateBtn" style="display:none;">Update Customer</button>
                         <button type="button" id="deleteBtn" style="display:none;">Delete Customer</button>
                     </form>
+
 
                     <p class="panel-description">
                         Use this area to add new customers, edit existing customer information, and delete records.
