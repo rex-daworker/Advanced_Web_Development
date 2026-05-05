@@ -76,7 +76,7 @@ document.getElementById('addBtn').onclick = async () => {
     console.error('Error adding customer:', err);
   }
 };
- 
+
 document.getElementById('updateBtn').onclick = async () => {
   if (!selectedCustomerId) return;
   const data = getFormData();
@@ -104,5 +104,9 @@ document.getElementById('deleteBtn').onclick = async () => {
     console.error('Error deleting customer:', err);
   }
 };
+document.getElementById("birth_date").addEventListener("change", () => {
+  const date = document.getElementById("birth_date").value;
+  console.log("Selected date:", date);
+});
 
 loadCustomers();
