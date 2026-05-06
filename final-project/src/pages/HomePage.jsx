@@ -33,7 +33,7 @@ export default function HomePage() {
                 </Link>
               </div>
             </div>
-still
+
             {/* RIGHT IMAGE */}
             <div className="mt-12 md:mt-0">
               <img
