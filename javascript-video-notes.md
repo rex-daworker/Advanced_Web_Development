@@ -169,3 +169,6 @@ Closures allow inner functions to access outer variables. This concept is powerf
 
 ## 51. Final Project / Wrap‑Up
 The final video tied everything together with a small project. It helped me see how all the concepts connect in real development.
+
+
+https://learn.microsoft.com/en-us/shows/beginners-series-to-javascript/?skip=30
