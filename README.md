@@ -1,6 +1,6 @@
 # Advanced Web Development
 
-A collection of full-stack web development coursework, built up progressively over one semester. The centrepiece is a **booking system** developed across seven phases — starting from a static frontend and ending with a fully containerized Node/Express + PostgreSQL application with JWT authentication.
+A collection of full-stack web development coursework, built up progressively over one semester. The centrepiece is a **booking system** developed across seven phases, starting from a static frontend and ending with a fully containerized Node/Express + PostgreSQL application with JWT authentication.
 
 ## What's inside
 
